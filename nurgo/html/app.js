@@ -285,7 +285,7 @@ app.delete("/api/usuarios/:id", verifyToken(["ADMIN"]), (req, res) => {
     });
   });
 });
-////
+
 // ------------------- INICIO SERVIDOR -------------------
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
