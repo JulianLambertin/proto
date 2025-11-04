@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <script src="/js/jquery.min.js"></script>
+  <script src="/js/bootstrap.bundle.min.js"></script>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- mobile metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+  <!-- site metas -->
+  <title>Medicine</title>
+  <meta name="keywords" content="">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <!-- bootstrap css -->
+  <!-- <link rel="stylesheet" href="css/bootstrap.min.css"> -->
+  <!-- style css -->
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Responsive-->
+  <link rel="stylesheet" href="/css/responsive.css">
+  <!-- fevicon -->
+  <link rel="icon" href="/images/fevicon.png" type="image/gif" />
+  <!-- Scrollbar Custom CSS -->
+  <link rel="stylesheet" href="/css/jquery.mCustomScrollbar.min.css">
+  <!-- Tweaks for older IEs-->
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+</head>
+
+<body>
+  <!-- header section start -->
+  <div class="header_section mb-5">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="logo"><a href="index.html"><img src="/images/lesion-de-rodilla.png" height="50px" width="55px"></a>
+      </div>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+          <li class="nav-item active"><a class="nav-link" href="medicine.html">Registro</a></li>
+          <li class="nav-item"><a class="nav-link" href="health.html">Terapia</a></li>
+          <li class="nav-item"><a id="dashboardBtn" class="nav-link" href="#">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" id="volverBtn" href="index.html">Volver</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+  <!-- header section end -->
+
+  <div class="login_register_section layout_padding">
+    <div class="container">
+      <div class="row">
+        <!-- LOGIN -->
+        <div class="col-md-6">
+          <div class="form_container" style="background-color: #33ffe3">
+            <h2 class="form_title" style="color: #fff;">Inicio de Sesión</h2>
+            <form method="POST" action="/login-paciente">
+              <div class="form-group">
+                <input type="email" class="form-control" name="email" placeholder="Email" required>
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
+              </div>
+              <div class="submit_bt">
+                <button type="submit">Login</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- REGISTRO -->
+        <div class="col-md-6">
+          <div class="form_container" style="background-color: #33ffe3">
+            <h2 class="form_title">Registro</h2>
+            <form method="POST" action="/registro">
+              <div class="form-group">
+                <input type="text" class="form-control" name="nombre" placeholder="Nombre Completo" required>
+              </div>
+              <div class="form-group">
+                <input type="email" class="form-control" name="email" placeholder="Email" required>
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
+              </div>
+              <div class="form-group">
+                <input type="password" class="form-control" name="confirm_password" placeholder="Confirma Contraseña">
+              </div>
+              <div class="submit_bt">
+                <button type="submit">Registrarse</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .login_register_section {
+      background-color: #f7f7f7;
+      padding: 60px 0;
+    }
+
+    .form_container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .form_title {
+      color: #09366d;
+      margin-bottom: 25px;
+      font-weight: 600;
+    }
+
+    .form-group input {
+      height: 45px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding-left: 15px;
+    }
+
+    .submit_bt a {
+      background-color: #1c82ad;
+      color: #fff;
+      padding: 10px 30px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .submit_bt a:hover {
+      background-color: #155e7c;
+    }
+  </style>
+
+  <!-- footer section start -->
+  <div class="footer_section layout_padding">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-2 col-sm-2">
+          <h1 class="adderss_text">Contact Us</h1>
+          <div class="map_icon"><img src="images/map-icon.png"><span class="paddlin_left_0">Page when looking at
+              its</span></div>
+          <div class="map_icon"><img src="images/call-icon.png"><span class="paddlin_left_0">+7586656566</span></div>
+          <div class="map_icon"><img src="images/mail-icon.png"><span class="paddlin_left_0">volim@gmail.com</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- footer section end -->
+  <div class="copyright_section">
+    <div class="container">
+      <p class="copyright_text">2019 All Rights Reserved</p>
+    </div>
+  </div>
+
+  <!-- Javascript files-->
+  <script src="js/jquery.min.js"></script>
+  <script src="js/popper.min.js"></script>
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <script src="js/jquery-3.0.0.min.js"></script>
+  <script src="js/plugin.js"></script>
+  <script src="js/jquery.mCustomScrollbar.concat.min.js"></script>
+  <script src="js/custom.js"></script>
+  <script src="js/owl.carousel.js"></script>
+
+  <script>
+    // Validación de password
+    document.querySelector('form[action="/registro"]').addEventListener('submit', function (e) {
+      const pass = this.querySelector('input[name="password"]').value;
+      const confirm = this.querySelector('input[name="confirm_password"]').value;
+      if (pass !== confirm) {
+        e.preventDefault();
+        alert("Las contraseñas no coinciden.");
+      }
+    });
+
+    // Alert de login fallido
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'credenciales') {
+      alert("Credenciales incorrectas. Intenta nuevamente.");
+    }
+
+    // Script para actualizar Dashboard según rol
+    $(document).ready(function () {
+      $.get("/session", function (sessionData) {
+        if (sessionData && sessionData.rol) {
+          const rol = sessionData.rol.toUpperCase();
+          let dashboardPath = "/";
+          if (rol === "ADMIN") dashboardPath = "/protected/dashboard_admin.html";
+          else if (rol === "PROFESIONAL") dashboardPath = "/protected/dashboard_profesional.html";
+          else if (rol === "SERVICIO_TECNICO") dashboardPath = "/protected/dashboard_tecnico.html";
+          $("#dashboardBtn").attr("href", dashboardPath);
+        }
+      }).fail(function () {
+        $("#dashboardBtn").attr("href", "/");
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/jquery.min.js"></script>
+  <script src="/js/bootstrap.bundle.min.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
+    .disabled-row {
+      background-color: #d1ecf1 !important;
+      color: #0c5460;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Dashboard Admin</a>
+      <button class="btn btn-outline-light" id="logoutBtn">Cerrar Sesión</button>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <h3 class="text-center mb-4">Gestión de Usuarios</h3>
+
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar por nombre">
+      </div>
+      <div class="col-md-3">
+        <input type="text" id="filtroEmail" class="form-control" placeholder="Buscar por correo">
+      </div>
+      <div class="col-md-3">
+        <select id="filtroRol" class="form-select">
+          <option value="">Filtrar por rol</option>
+          <option value="ADMIN">Admin</option>
+          <option value="PROFESIONAL">Profesional</option>
+          <option value="SERVICIO_TECNICO">Servicio Técnico</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" id="btnAgregar">Agregar Usuario</button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped text-center" id="tablaUsuarios">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyUsuarios"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal agregar/editar -->
+  <div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+      <form id="formUsuario" class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="tituloModal">Agregar Usuario</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="usuarioId">
+          <div class="mb-3">
+            <label>Nombre</label>
+            <input type="text" id="nombre" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label>Email</label>
+            <input type="email" id="email" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label>Contraseña</label>
+            <input type="password" id="password" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label>Rol</label>
+            <select id="rol" class="form-select" required>
+              <option value="ADMIN">Admin</option>
+              <option value="PROFESIONAL">Profesional</option>
+              <option value="SERVICIO_TECNICO">Servicio Técnico</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let usuarioActual = null;
+
+    // Obtener usuario logueado
+    $.get('/session', (data) => {
+      usuarioActual = data.email;
+      cargarUsuarios();
+    }).fail(() => {
+      alert('Sesión expirada. Vuelve a iniciar sesión.');
+      window.location.href = '/views/login_rol.html';
+    });
+
+    // Cerrar sesión
+    $('#logoutBtn').on('click', () => window.location.href = '/logout');
+
+    // Cargar usuarios
+    function cargarUsuarios() {
+      $.get('/api/usuarios', (usuarios) => {
+        $('#tbodyUsuarios').empty();
+        usuarios.forEach(u => {
+          const isActual = (u.email === usuarioActual);
+          const rowClass = isActual ? 'disabled-row' : '';
+          const acciones = isActual
+            ? '<button class="btn btn-secondary btn-sm" disabled>Cuenta actual</button>'
+            : `
+              <button class="btn btn-warning btn-sm btnEditar" data-id="${u.id}">Editar</button>
+              <button class="btn btn-danger btn-sm btnEliminar" data-id="${u.id}">Eliminar</button>
+            `;
+          $('#tbodyUsuarios').append(`
+            <tr class="${rowClass}">
+              <td>${u.id}</td>
+              <td>${u.nombre}</td>
+              <td>${u.email}</td>
+              <td>${u.rol}</td>
+              <td>${acciones}</td>
+            </tr>
+          `);
+        });
+      });
+    }
+
+    // Filtros dinámicos
+    $('#filtroNombre, #filtroEmail, #filtroRol').on('input change', function () {
+      const nombre = $('#filtroNombre').val().toLowerCase();
+      const email = $('#filtroEmail').val().toLowerCase();
+      const rol = $('#filtroRol').val().toLowerCase();
+
+      $('#tbodyUsuarios tr').each(function () {
+        const n = $(this).find('td:eq(1)').text().toLowerCase();
+        const e = $(this).find('td:eq(2)').text().toLowerCase();
+        const r = $(this).find('td:eq(3)').text().toLowerCase();
+        $(this).toggle(
+          (!nombre || n.includes(nombre)) &&
+          (!email || e.includes(email)) &&
+          (!rol || r.includes(rol))
+        );
+      });
+    });
+
+    // Agregar
+    $('#btnAgregar').on('click', () => {
+      $('#formUsuario')[0].reset();
+      $('#usuarioId').val('');
+      $('#tituloModal').text('Agregar Usuario');
+      $('#password').prop('required', true);
+      $('#modalUsuario').modal('show');
+    });
+
+    // Editar
+    $(document).on('click', '.btnEditar', function () {
+      const id = $(this).data('id');
+      const fila = $(this).closest('tr');
+      $('#usuarioId').val(id);
+      $('#nombre').val(fila.find('td:eq(1)').text());
+      $('#email').val(fila.find('td:eq(2)').text());
+      $('#rol').val(fila.find('td:eq(3)').text());
+      $('#password').prop('required', false);
+      $('#tituloModal').text('Editar Usuario');
+      $('#modalUsuario').modal('show');
+    });
+
+    // Guardar
+    $('#formUsuario').on('submit', function (e) {
+      e.preventDefault();
+      const id = $('#usuarioId').val();
+      const datos = {
+        nombre: $('#nombre').val(),
+        email: $('#email').val(),
+        password: $('#password').val(),
+        rol: $('#rol').val()
+      };
+      if (!id) {
+        $.post('/api/usuarios', datos)
+          .done(() => { $('#modalUsuario').modal('hide'); cargarUsuarios(); })
+          .fail(err => alert(err.responseText));
+      } else {
+        $.ajax({
+          url: `/api/usuarios/${id}`,
+          type: 'PUT',
+          data: datos,
+          success: () => { $('#modalUsuario').modal('hide'); cargarUsuarios(); },
+          error: err => alert(err.responseText)
+        });
+      }
+    });
+
+    // Eliminar
+    $(document).on('click', '.btnEliminar', function () {
+      if (!confirm('¿Eliminar este usuario?')) return;
+      const id = $(this).data('id');
+      $.ajax({
+        url: `/api/usuarios/${id}`,
+        type: 'DELETE',
+        success: () => cargarUsuarios(),
+        error: err => alert(err.responseText)
+      });
+    });
+  </script>
+</body>
+
+</html>
