@@ -252,7 +252,7 @@ app.get("/api/reportes", verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"
   let sql = "SELECT * FROM reportes";
   let params = [];
 
-  if (rol === "PROFESIONAL") {
+if (rol === "PROFESIONAL") {
     sql += " WHERE usuario_emisor = ? AND rol_emisor = 'PROFESIONAL' ORDER BY fecha_creacion DESC";
     params = [nombreUsuario];
   } else if (rol === "SERVICIO_TECNICO") {
