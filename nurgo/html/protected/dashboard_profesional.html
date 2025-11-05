@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="/css/bootstrap.min.css" />
   <script src="/js/jquery.min.js"></script>
   <script src="/js/bootstrap.bundle.min.js"></script>
+  <style>
+  .container { max-width: 1100px; }
+  textarea { resize: none; }
+  @media (max-width: 768px) {
+    table { font-size: 12px; }
+    th, td { padding: 6px; }
+  }
+</style>
 </head>
 
 <body class="bg-light">
@@ -35,6 +43,71 @@
         </div>
       </div>
   </nav>
+
+  <section class="container mt-5">
+    <h2 class="text-center mb-4">Gestión de Reportes</h2>
+
+    <!-- Formulario para crear un reporte -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">Nuevo Reporte</div>
+      <div class="card-body">
+        <form id="formReporte">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label for="tipo" class="form-label">Tipo</label>
+              <select id="tipo" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <option value="Sensor">Sensor</option>
+                <option value="Actuador">Actuador</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <label for="dispositivo" class="form-label">Dispositivo</label>
+              <select id="dispositivo" class="form-select" required>
+                <option value="">Seleccione...</option>
+                <option value="Sensor MPU6050">Sensor MPU6050</option>
+                <option value="Sensor HX711">Sensor HX711</option>
+                <option value="Sensor EMG">Sensor EMG</option>
+                <option value="Actuador Buzzer">Actuador Buzzer</option>
+                <option value="Actuador Vibrador">Actuador Vibrador</option>
+                <option value="Actuador Rele">Actuador Rele</option>
+              </select>
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label for="descripcion" class="form-label">Descripción del problema</label>
+              <textarea id="descripcion" class="form-control" rows="3" required></textarea>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-success">Guardar Reporte</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tabla de reportes -->
+    <div class="card">
+      <div class="card-header bg-secondary text-white">Mis Reportes</div>
+      <div class="card-body table-responsive">
+        <table class="table table-striped" id="tablaReportes">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tipo</th>
+              <th>Dispositivo</th>
+              <th>Descripción</th>
+              <th>Estado</th>
+              <th>Respuesta</th>
+              <th>Fecha creación</th>
+              <th>Fecha respuesta</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <div class="container mt-4">
     <div class="card shadow-sm p-3">
@@ -132,6 +205,67 @@
 
     });
   </script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("formReporte");
+  const tabla = document.querySelector("#tablaReportes tbody");
+
+  // Cargar reportes del profesional
+  async function cargarReportes() {
+    try {
+      const res = await fetch("/api/reportes");
+      if (!res.ok) throw new Error("Error al cargar reportes");
+      const data = await res.json();
+
+      tabla.innerHTML = "";
+      data.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td>${r.tipo}</td>
+          <td>${r.dispositivo}</td>
+          <td>${r.descripcion}</td>
+          <td><span class="badge bg-${r.estado === 'Pendiente' ? 'warning' : 'success'}">${r.estado}</span></td>
+          <td>${r.respuesta || '-'}</td>
+          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+          <td>${r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-'}</td>
+        `;
+        tabla.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      tabla.innerHTML = "<tr><td colspan='8' class='text-center text-danger'>Error al cargar reportes</td></tr>";
+    }
+  }
+
+  // Crear nuevo reporte
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const tipo = document.getElementById("tipo").value;
+    const dispositivo = document.getElementById("dispositivo").value;
+    const descripcion = document.getElementById("descripcion").value;
+
+    try {
+      const res = await fetch("/api/reportes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, dispositivo, descripcion })
+      });
+
+      if (!res.ok) throw new Error("Error al crear reporte");
+      alert("✅ Reporte creado correctamente");
+      form.reset();
+      cargarReportes();
+    } catch (err) {
+      alert("❌ No se pudo crear el reporte");
+      console.error(err);
+    }
+  });
+
+  cargarReportes();
+});
+</script>
+
 </body>
 
 </html>
