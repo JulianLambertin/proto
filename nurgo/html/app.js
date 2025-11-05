@@ -43,9 +43,7 @@ app.use(
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
-    },
+    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -104,90 +102,63 @@ io.on("connection", (socket) => {
 });
 
 // ------------------- HELPER DE SESIÓN -------------------
-// Ahora normaliza el rol a mayúsculas y quita espacios
 function verifyToken(roles) {
   return (req, res, next) => {
     if (req.session && req.session.user) {
       const rolSesion = req.session.user.rol.trim().toUpperCase();
-      const rolesPermitidos = roles.map(r => r.trim().toUpperCase());
+      const rolesPermitidos = roles.map((r) => r.trim().toUpperCase());
       if (rolesPermitidos.includes(rolSesion)) return next();
     }
     return res.status(403).send("Acceso denegado o sesión expirada");
   };
 }
 
-// Obtener datos de la sesión actual
+// ------------------- SESIÓN ACTUAL -------------------
 app.get("/session", (req, res) => {
   if (req.session && req.session.user) {
-    res.json({ email: req.session.user.email, rol: req.session.user.rol });
+    res.json({ email: req.session.user.email, rol: req.session.user.rol, nombre: req.session.user.nombre });
   } else {
     res.status(403).send("No hay sesión válida");
   }
 });
 
 // ------------------- RUTAS PRINCIPALES -------------------
-// Login / Inicio
 app.get("/", (req, res) => res.redirect("/index.html"));
+app.get("/login_rol.html", (req, res) => res.sendFile(path.join(__dirname, "views/login_rol.html")));
+app.get("/index.html", (req, res) => res.sendFile(path.join(__dirname, "views/index.html")));
+app.get("/health.html", (req, res) => res.sendFile(path.join(__dirname, "views/health.html")));
+app.get("/medicine.html", (req, res) => res.sendFile(path.join(__dirname, "views/medicine.html")));
+app.get("/mediciones.html", (req, res) => res.sendFile(path.join(__dirname, "views/mediciones.html")));
 
-app.get("/login_rol.html", (req, res) =>
-  res.sendFile(path.join(__dirname, "views/login_rol.html"))
-);
-app.get("/index.html", (req, res) =>
-  res.sendFile(path.join(__dirname, "views/index.html"))
-);
-app.get("/health.html", (req, res) =>
-  res.sendFile(path.join(__dirname, "views/health.html"))
-);
-app.get("/medicine.html", (req, res) =>
-  res.sendFile(path.join(__dirname, "views/medicine.html"))
-);
-app.get("/mediciones.html", (req, res) =>
-  res.sendFile(path.join(__dirname, "views/mediciones.html"))
-);
-
-
-// LOGIN PACIENTE
+// ------------------- LOGIN PACIENTE -------------------
 app.post("/login-paciente", (req, res) => {
   const { email, password } = req.body;
-
   const sql = "SELECT * FROM pacientes WHERE email = ? AND password = ?";
   db.query(sql, [email, password], (err, results) => {
-    if (err) {
-      console.error("Error al verificar paciente:", err);
-      return res.redirect("/medicine.html?error=db");
-    }
-
+    if (err) return res.redirect("/medicine.html?error=db");
     if (results.length > 0) {
-      // Paciente encontrado
       const paciente = results[0];
       req.session.userId = paciente.id;
       req.session.nombre = paciente.nombre;
       req.session.email = paciente.email;
-      req.session.tipo = "PACIENTE"; // <--- IMPORTANTE
-
-      console.log(`Paciente ${paciente.nombre} ha iniciado sesión`);
-      res.redirect("/health.html"); // va a terapia
+      req.session.tipo = "PACIENTE";
+      res.redirect("/health.html");
     } else {
-      // Credenciales incorrectas
       res.redirect("/medicine.html?error=credenciales");
     }
   });
 });
 
-
-
-
-// Login roles
+// ------------------- LOGIN ROLES -------------------
 app.post("/login-rol", (req, res) => {
   const { email, password } = req.body;
   const sql = "SELECT * FROM usuarios WHERE email=? AND password=? AND activo=1";
   db.query(sql, [email, password], (err, results) => {
     if (err) return res.status(500).send("Error en servidor");
-    if (results.length === 0)
-      return res.redirect("/login_rol.html?error=credenciales");
+    if (results.length === 0) return res.redirect("/login_rol.html?error=credenciales");
 
     const user = results[0];
-    user.rol = (user.rol || "").trim().toUpperCase(); // <-- normaliza rol
+    user.rol = (user.rol || "").trim().toUpperCase();
     req.session.user = user;
 
     switch (user.rol) {
@@ -203,7 +174,7 @@ app.post("/login-rol", (req, res) => {
   });
 });
 
-// Logout
+// ------------------- LOGOUT -------------------
 app.get("/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/login_rol.html"));
 });
@@ -219,25 +190,17 @@ app.get("/protected/dashboard_tecnico.html", verifyToken(["SERVICIO_TECNICO"]), 
   res.sendFile(path.join(__dirname, "protected/dashboard_tecnico.html"))
 );
 
-// ------------------- API ADMIN (CRUD USUARIOS) -------------------
-
-// ***** CAMBIO AQUÍ *****
-// Se añade "PROFESIONAL" para que pueda leer la lista
+// ------------------- API USUARIOS -------------------
 app.get("/api/usuarios", verifyToken(["ADMIN", "PROFESIONAL"]), (req, res) => {
-  console.log("SESION USUARIO:", req.session.user); // <-- para debug
-  db.query(
-    "SELECT id_usuario AS id, nombre, email, rol FROM usuarios WHERE activo=1",
-    (err, results) => {
-      if (err) return res.status(500).send("Error DB");
-      res.json(results);
-    }
-  );
+  db.query("SELECT id_usuario AS id, nombre, email, rol FROM usuarios WHERE activo=1", (err, results) => {
+    if (err) return res.status(500).send("Error DB");
+    res.json(results);
+  });
 });
 
 app.post("/api/usuarios", verifyToken(["ADMIN"]), (req, res) => {
   const { nombre, email, password, rol } = req.body;
-  if (!nombre || !email || !password || !rol)
-    return res.status(400).send("Faltan datos");
+  if (!nombre || !email || !password || !rol) return res.status(400).send("Faltan datos");
 
   db.query("SELECT * FROM usuarios WHERE email=?", [email], (err, results) => {
     if (err) return res.status(500).send("Error DB");
@@ -258,17 +221,12 @@ app.put("/api/usuarios/:id", verifyToken(["ADMIN"]), (req, res) => {
   const { nombre, email, rol } = req.body;
   const id = req.params.id;
 
-  if (req.session.user.email === email)
-    return res.status(403).send("No puedes modificar tu propia cuenta");
+  if (req.session.user.email === email) return res.status(403).send("No puedes modificar tu propia cuenta");
 
-  db.query(
-    "UPDATE usuarios SET nombre=?, email=?, rol=? WHERE id_usuario=?",
-    [nombre, email, rol, id],
-    (err) => {
-      if (err) return res.status(500).send("Error actualizando usuario");
-      res.send("Usuario actualizado");
-    }
-  );
+  db.query("UPDATE usuarios SET nombre=?, email=?, rol=? WHERE id_usuario=?", [nombre, email, rol, id], (err) => {
+    if (err) return res.status(500).send("Error actualizando usuario");
+    res.send("Usuario actualizado");
+  });
 });
 
 app.delete("/api/usuarios/:id", verifyToken(["ADMIN"]), (req, res) => {
@@ -276,13 +234,71 @@ app.delete("/api/usuarios/:id", verifyToken(["ADMIN"]), (req, res) => {
 
   db.query("SELECT email FROM usuarios WHERE id_usuario=?", [id], (err, result) => {
     if (err) return res.status(500).send("Error DB");
-    if (result.length && result[0].email === req.session.user.email)
-      return res.status(403).send("No puedes eliminar tu propia cuenta");
+    if (result.length && result[0].email === req.session.user.email) return res.status(403).send("No puedes eliminar tu propia cuenta");
 
     db.query("DELETE FROM usuarios WHERE id_usuario=?", [id], (errDel) => {
       if (errDel) return res.status(500).send("Error eliminando usuario");
       res.send("Usuario eliminado");
     });
+  });
+});
+
+// ------------------- API REPORTES -------------------
+
+// Listar reportes según rol
+app.get("/api/reportes", verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"]), (req, res) => {
+  const rol = req.session.user.rol.trim().toUpperCase();
+  const nombreUsuario = req.session.user.nombre;
+  let sql = "SELECT * FROM reportes";
+  let params = [];
+
+  if (rol === "PROFESIONAL") {
+    sql += " WHERE usuario_emisor = ? AND rol_emisor = 'PROFESIONAL' ORDER BY fecha_creacion DESC";
+    params = [nombreUsuario];
+  } else if (rol === "SERVICIO_TECNICO") {
+    sql += " WHERE estado = 'Pendiente' ORDER BY fecha_creacion ASC";
+  } else {
+    sql += " ORDER BY fecha_creacion DESC"; // Admin
+  }
+
+  db.query(sql, params, (err, results) => {
+    if (err) return res.status(500).send("Error al obtener reportes");
+    res.json(results);
+  });
+});
+
+// Crear un reporte (solo profesional)
+app.post("/api/reportes", verifyToken(["PROFESIONAL"]), (req, res) => {
+  const { tipo, dispositivo, descripcion } = req.body;
+  const nombreUsuario = req.session.user.nombre;
+  const rolUsuario = req.session.user.rol;
+
+  if (!tipo || !dispositivo || !descripcion) return res.status(400).send("Faltan campos obligatorios");
+
+  const sql = `INSERT INTO reportes (usuario_emisor, rol_emisor, tipo, dispositivo, descripcion, estado)
+               VALUES (?, ?, ?, ?, ?, 'Pendiente')`;
+
+  db.query(sql, [nombreUsuario, rolUsuario, tipo, dispositivo, descripcion], (err) => {
+    if (err) return res.status(500).send("Error al crear el reporte");
+    res.send("Reporte creado correctamente");
+  });
+});
+
+// Responder reporte (solo servicio técnico)
+app.put("/api/reportes/:id", verifyToken(["SERVICIO_TECNICO"]), (req, res) => {
+  const { respuesta, estado } = req.body;
+  const nombreUsuario = req.session.user.nombre;
+  const rolUsuario = req.session.user.rol;
+  const id = req.params.id;
+
+  const sql = `UPDATE reportes
+               SET usuario_receptor = ?, rol_receptor = ?, respuesta = ?, estado = ?, fecha_respuesta = NOW()
+               WHERE id = ? AND estado = 'Pendiente'`;
+
+  db.query(sql, [nombreUsuario, rolUsuario, respuesta, estado || "Corregido", id], (err, result) => {
+    if (err) return res.status(500).send("Error al actualizar reporte");
+    if (result.affectedRows === 0) return res.status(404).send("Reporte no encontrado o ya corregido");
+    res.send("Reporte actualizado correctamente");
   });
 });
 
