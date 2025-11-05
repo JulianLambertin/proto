@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS pacientes (
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id_paciente)
+  profesional_id INT DEFAULT NULL,
+  PRIMARY KEY (id_paciente),
+  FOREIGN KEY (profesional_id) REFERENCES usuarios(id_usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================

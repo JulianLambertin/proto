@@ -9,13 +9,25 @@
   <script src="/js/jquery.min.js"></script>
   <script src="/js/bootstrap.bundle.min.js"></script>
   <style>
-  .container { max-width: 1100px; }
-  textarea { resize: none; }
-  @media (max-width: 768px) {
-    table { font-size: 12px; }
-    th, td { padding: 6px; }
-  }
-</style>
+    .container {
+      max-width: 1100px;
+    }
+
+    textarea {
+      resize: none;
+    }
+
+    @media (max-width: 768px) {
+      table {
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        padding: 6px;
+      }
+    }
+  </style>
 </head>
 
 <body class="bg-light">
@@ -206,21 +218,21 @@
     });
   </script>
   <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("formReporte");
-  const tabla = document.querySelector("#tablaReportes tbody");
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("formReporte");
+      const tabla = document.querySelector("#tablaReportes tbody");
 
-  // Cargar reportes del profesional
-  async function cargarReportes() {
-    try {
-      const res = await fetch("/api/reportes");
-      if (!res.ok) throw new Error("Error al cargar reportes");
-      const data = await res.json();
+      // Cargar reportes del profesional
+      async function cargarReportes() {
+        try {
+          const res = await fetch("/api/reportes");
+          if (!res.ok) throw new Error("Error al cargar reportes");
+          const data = await res.json();
 
-      tabla.innerHTML = "";
-      data.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+          tabla.innerHTML = "";
+          data.forEach(r => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
           <td>${r.id}</td>
           <td>${r.tipo}</td>
           <td>${r.dispositivo}</td>
@@ -230,41 +242,41 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
           <td>${r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-'}</td>
         `;
-        tabla.appendChild(tr);
+            tabla.appendChild(tr);
+          });
+        } catch (err) {
+          console.error(err);
+          tabla.innerHTML = "<tr><td colspan='8' class='text-center text-danger'>Error al cargar reportes</td></tr>";
+        }
+      }
+
+      // Crear nuevo reporte
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const tipo = document.getElementById("tipo").value;
+        const dispositivo = document.getElementById("dispositivo").value;
+        const descripcion = document.getElementById("descripcion").value;
+
+        try {
+          const res = await fetch("/api/reportes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tipo, dispositivo, descripcion })
+          });
+
+          if (!res.ok) throw new Error("Error al crear reporte");
+          alert("✅ Reporte creado correctamente");
+          form.reset();
+          cargarReportes();
+        } catch (err) {
+          alert("❌ No se pudo crear el reporte");
+          console.error(err);
+        }
       });
-    } catch (err) {
-      console.error(err);
-      tabla.innerHTML = "<tr><td colspan='8' class='text-center text-danger'>Error al cargar reportes</td></tr>";
-    }
-  }
 
-  // Crear nuevo reporte
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const tipo = document.getElementById("tipo").value;
-    const dispositivo = document.getElementById("dispositivo").value;
-    const descripcion = document.getElementById("descripcion").value;
-
-    try {
-      const res = await fetch("/api/reportes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, dispositivo, descripcion })
-      });
-
-      if (!res.ok) throw new Error("Error al crear reporte");
-      alert("✅ Reporte creado correctamente");
-      form.reset();
       cargarReportes();
-    } catch (err) {
-      alert("❌ No se pudo crear el reporte");
-      console.error(err);
-    }
-  });
-
-  cargarReportes();
-});
-</script>
+    });
+  </script>
 
 </body>
 
