@@ -32,6 +32,7 @@
 
 <body class="bg-light">
 
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
     <div class="container-fluid">
       <a class="navbar-brand fw-bold text-info" href="#">Dashboard Profesional</a>
@@ -42,24 +43,23 @@
           <i class="fa fa-heartbeat me-2"></i> Inicio
         </a>
 
-        <div class="d-flex align-items-center">
-          <a href="/views/medicine.html" class="btn btn-info text-white fw-semibold px-4 me-3 shadow-sm mr-2"
-            style="border-radius: 30px; transition: 0.3s;">
-            <i class="fa fa-heartbeat me-2"></i> Terapia
-          </a>
+        <a href="/views/medicine.html" class="btn btn-info text-white fw-semibold px-4 me-3 shadow-sm mr-2"
+          style="border-radius: 30px; transition: 0.3s;">
+          <i class="fa fa-heartbeat me-2"></i> Terapia
+        </a>
 
-          <button class="btn btn-outline-light fw-semibold px-4" id="logoutBtn"
-            style="border-radius: 30px; transition: 0.3s;">
-            <i class="fa fa-sign-out me-2"></i> Cerrar sesión
-          </button>
-        </div>
+        <button class="btn btn-outline-light fw-semibold px-4" id="logoutBtn"
+          style="border-radius: 30px; transition: 0.3s;">
+          <i class="fa fa-sign-out me-2"></i> Cerrar sesión
+        </button>
       </div>
+    </div>
   </nav>
 
+  <!-- Sección Reportes -->
   <section class="container mt-5">
     <h2 class="text-center mb-4">Gestión de Reportes</h2>
 
-    <!-- Formulario para crear un reporte -->
     <div class="card mb-4">
       <div class="card-header bg-primary text-white">Nuevo Reporte</div>
       <div class="card-body">
@@ -98,7 +98,6 @@
       </div>
     </div>
 
-    <!-- Tabla de reportes -->
     <div class="card">
       <div class="card-header bg-secondary text-white">Mis Reportes</div>
       <div class="card-body table-responsive">
@@ -121,127 +120,145 @@
     </div>
   </section>
 
-  <div class="container mt-4">
-    <div class="card shadow-sm p-3">
-      <h3 class="mb-3">Usuarios Profesionales</h3>
+  <!-- Sección Pacientes -->
+  <section class="container mt-5">
+    <h2 class="text-center mb-4">Gestión de Pacientes</h2>
 
-      <!-- FILTROS -->
-      <div class="row mb-3">
-        <div class="col-md-4">
-          <input type="text" id="filterId" class="form-control" placeholder="Buscar por ID">
-        </div>
-        <div class="col-md-4">
-          <input type="text" id="filterName" class="form-control" placeholder="Buscar por nombre">
-        </div>
-        <div class="col-md-4">
-          <input type="text" id="filterEmail" class="form-control" placeholder="Buscar por correo">
-        </div>
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">Nuevo Paciente</div>
+      <div class="card-body">
+        <form id="formPaciente">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <input type="text" class="form-control" id="nombre" placeholder="Nombre completo" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <input type="email" class="form-control" id="email" placeholder="Email" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <input type="password" class="form-control" id="password" placeholder="Contraseña" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success">Agregar Paciente</button>
+        </form>
       </div>
-
-      <!-- TABLA -->
-      <table class="table table-striped table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Correo</th>
-          </tr>
-        </thead>
-        <tbody id="userTable"></tbody>
-      </table>
     </div>
-  </div>
+
+    <div class="card">
+      <div class="card-header bg-secondary text-white">Mis Pacientes</div>
+      <div class="card-body table-responsive">
+        <table class="table table-striped" id="tablaPacientes">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <script>
+    // Sesión y logout
     $(document).ready(function () {
-      let globalUsersData = []; // Guardar datos
-
-      // Verificar sesión
-      $.get("/session", function (sessionData) {
-        if (sessionData.rol.toUpperCase() === "PROFESIONAL") {
-          loadUsers();
-        } else {
-          alert("Acceso denegado. Tu rol no es PROFESIONAL.");
-          window.location.href = "/login_rol.html";
-        }
-      }).fail(function () {
-        alert("No hay una sesión activa. Por favor, inicia sesión.");
-        window.location.href = "/login_rol.html";
-      });
-
-      // Logout
-      $("#logoutBtn").click(() => {
-        window.location.href = "/logout";
-      });
-
-      // Cargar usuarios
-      function loadUsers() {
-        $.get("/api/usuarios", function (data) {
-          // Filtrar solo PROFESIONAL y ordenar por ID ascendente
-          globalUsersData = data
-            .filter(u => u.rol.toUpperCase() === "PROFESIONAL")
-            .sort((a, b) => a.id - b.id);
-          renderTable();
-        }).fail(() => {
-          alert("No se pudieron cargar los usuarios. (Error de API)");
-        });
-      }
-
-      // Renderizar tabla con filtros
-      function renderTable() {
-        const idFilter = $("#filterId").val().toLowerCase();
-        const nameFilter = $("#filterName").val().toLowerCase();
-        const emailFilter = $("#filterEmail").val().toLowerCase();
-
-        const filtered = globalUsersData.filter(u =>
-          (idFilter === "" || u.id.toString().includes(idFilter)) &&
-          (nameFilter === "" || u.nombre.toLowerCase().includes(nameFilter)) &&
-          (emailFilter === "" || u.email.toLowerCase().includes(emailFilter))
-        );
-
-        let html = "";
-        filtered.forEach(u => {
-          html += `
-        <tr>
-          <td>${u.id}</td>
-          <td>${u.nombre}</td>
-          <td>${u.email}</td>
-        </tr>`;
-        });
-
-        $("#userTable").html(html);
-      }
-
-      // Activar filtros
-      $("#filterId, #filterName, #filterEmail").on("input", renderTable);
-
+      $("#logoutBtn").click(() => { window.location.href = "/logout"; });
     });
-  </script>
-  <script>
+
+    // CRUD Pacientes
+    $(document).ready(function () {
+      const tabla = $("#tablaPacientes tbody");
+
+      async function cargarPacientes() {
+        try {
+          const res = await fetch("/api/pacientes");
+          const data = await res.json();
+          tabla.empty();
+          data.forEach(p => {
+            tabla.append(`
+              <tr>
+                <td>${p.id_paciente}</td>
+                <td>${p.nombre}</td>
+                <td>${p.email}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary me-1 editBtn" data-id="${p.id_paciente}">Editar</button>
+                  <button class="btn btn-sm btn-danger deleteBtn" data-id="${p.id_paciente}">Eliminar</button>
+                </td>
+              </tr>
+            `);
+          });
+        } catch (err) { console.error(err); }
+      }
+
+      $("#formPaciente").submit(async function (e) {
+        e.preventDefault();
+        const nombre = $("#nombre").val();
+        const email = $("#email").val();
+        const password = $("#password").val();
+        try {
+          const res = await fetch("/api/pacientes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, email, password })
+          });
+          if (!res.ok) throw new Error("Error al crear paciente");
+          $("#formPaciente")[0].reset();
+          cargarPacientes();
+        } catch (err) { alert(err.message); }
+      });
+
+      tabla.on("click", ".deleteBtn", async function () {
+        const id = $(this).data("id");
+        if (confirm("¿Eliminar paciente?")) {
+          await fetch(`/api/pacientes/${id}`, { method: "DELETE" });
+          cargarPacientes();
+        }
+      });
+
+      tabla.on("click", ".editBtn", async function () {
+        const id = $(this).data("id");
+        const fila = $(this).closest("tr");
+        const nombre = fila.find("td:eq(1)").text();
+        const email = fila.find("td:eq(2)").text();
+        const nuevoNombre = prompt("Nuevo nombre", nombre) || nombre;
+        const nuevoEmail = prompt("Nuevo email", email) || email;
+        const nuevaPass = prompt("Nueva contraseña (dejar en blanco si no cambia)", "");
+        await fetch(`/api/pacientes/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre: nuevoNombre, email: nuevoEmail, password: nuevaPass })
+        });
+        cargarPacientes();
+      });
+
+      cargarPacientes();
+    });
+
+    // CRUD Reportes
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("formReporte");
       const tabla = document.querySelector("#tablaReportes tbody");
 
-      // Cargar reportes del profesional
       async function cargarReportes() {
         try {
           const res = await fetch("/api/reportes");
-          if (!res.ok) throw new Error("Error al cargar reportes");
           const data = await res.json();
-
           tabla.innerHTML = "";
           data.forEach(r => {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-          <td>${r.id}</td>
-          <td>${r.tipo}</td>
-          <td>${r.dispositivo}</td>
-          <td>${r.descripcion}</td>
-          <td><span class="badge bg-${r.estado === 'Pendiente' ? 'warning' : 'success'}">${r.estado}</span></td>
-          <td>${r.respuesta || '-'}</td>
-          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-          <td>${r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-'}</td>
-        `;
+              <td>${r.id}</td>
+              <td>${r.tipo}</td>
+              <td>${r.dispositivo}</td>
+              <td>${r.descripcion}</td>
+              <td><span class="badge bg-${r.estado === 'Pendiente' ? 'warning' : 'success'}">${r.estado}</span></td>
+              <td>${r.respuesta || '-'}</td>
+              <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+              <td>${r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-'}</td>
+            `;
             tabla.appendChild(tr);
           });
         } catch (err) {
@@ -250,20 +267,17 @@
         }
       }
 
-      // Crear nuevo reporte
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const tipo = document.getElementById("tipo").value;
         const dispositivo = document.getElementById("dispositivo").value;
         const descripcion = document.getElementById("descripcion").value;
-
         try {
           const res = await fetch("/api/reportes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ tipo, dispositivo, descripcion })
           });
-
           if (!res.ok) throw new Error("Error al crear reporte");
           alert("✅ Reporte creado correctamente");
           form.reset();

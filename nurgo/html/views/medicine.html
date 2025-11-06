@@ -15,17 +15,14 @@
   <meta name="keywords" content="">
   <meta name="description" content="">
   <meta name="author" content="">
-  <!-- bootstrap css -->
-  <!-- <link rel="stylesheet" href="css/bootstrap.min.css"> -->
   <!-- style css -->
   <link rel="stylesheet" href="/css/style.css">
-  <!-- Responsive-->
   <link rel="stylesheet" href="/css/responsive.css">
   <!-- fevicon -->
   <link rel="icon" href="/images/fevicon.png" type="image/gif" />
   <!-- Scrollbar Custom CSS -->
   <link rel="stylesheet" href="/css/jquery.mCustomScrollbar.min.css">
-  <!-- Tweaks for older IEs-->
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
 </head>
 
@@ -42,7 +39,7 @@
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
           <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-          <li class="nav-item active"><a class="nav-link" href="medicine.html">Registro</a></li>
+          <li class="nav-item active"><a class="nav-link" href="medicine.html">Login Paciente</a></li>
           <li class="nav-item"><a class="nav-link" href="health.html">Terapia</a></li>
           <li class="nav-item"><a id="dashboardBtn" class="nav-link" href="#">Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" id="volverBtn" href="index.html">Volver</a></li>
@@ -54,11 +51,11 @@
 
   <div class="login_register_section layout_padding">
     <div class="container">
-      <div class="row">
-        <!-- LOGIN -->
+      <div class="row justify-content-center">
+        <!-- LOGIN PACIENTE -->
         <div class="col-md-6">
           <div class="form_container" style="background-color: #33ffe3">
-            <h2 class="form_title" style="color: #fff;">Inicio de Sesión</h2>
+            <h2 class="form_title" style="color: #fff;">Inicio de Sesión Paciente</h2>
             <form method="POST" action="/login-paciente">
               <div class="form-group">
                 <input type="email" class="form-control" name="email" placeholder="Email" required>
@@ -68,30 +65,6 @@
               </div>
               <div class="submit_bt">
                 <button type="submit">Login</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- REGISTRO -->
-        <div class="col-md-6">
-          <div class="form_container" style="background-color: #33ffe3">
-            <h2 class="form_title">Registro</h2>
-            <form method="POST" action="/registro">
-              <div class="form-group">
-                <input type="text" class="form-control" name="nombre" placeholder="Nombre Completo" required>
-              </div>
-              <div class="form-group">
-                <input type="email" class="form-control" name="email" placeholder="Email" required>
-              </div>
-              <div class="form-group">
-                <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
-              </div>
-              <div class="form-group">
-                <input type="password" class="form-control" name="confirm_password" placeholder="Confirma Contraseña">
-              </div>
-              <div class="submit_bt">
-                <button type="submit">Registrarse</button>
               </div>
             </form>
           </div>
@@ -127,16 +100,16 @@
       padding-left: 15px;
     }
 
-    .submit_bt a {
+    .submit_bt button {
       background-color: #1c82ad;
       color: #fff;
       padding: 10px 30px;
       border-radius: 5px;
-      text-decoration: none;
-      display: inline-block;
+      border: none;
+      cursor: pointer;
     }
 
-    .submit_bt a:hover {
+    .submit_bt button:hover {
       background-color: #155e7c;
     }
   </style>
@@ -174,16 +147,6 @@
   <script src="js/owl.carousel.js"></script>
 
   <script>
-    // Validación de password
-    document.querySelector('form[action="/registro"]').addEventListener('submit', function (e) {
-      const pass = this.querySelector('input[name="password"]').value;
-      const confirm = this.querySelector('input[name="confirm_password"]').value;
-      if (pass !== confirm) {
-        e.preventDefault();
-        alert("Las contraseñas no coinciden.");
-      }
-    });
-
     // Alert de login fallido
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'credenciales') {
