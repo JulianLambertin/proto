@@ -206,25 +206,33 @@ app.get("/api/usuarios", verifyToken(["ADMIN", "PROFESIONAL"]), (req, res) => {
   );
 });
 // ------------------- API REPORTES -------------------
-app.get(
-  "/api/reportes",
-  verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"]),
+// ------------------- API REPORTES -------------------
+app.get("/api/reportes", verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"]),
   (req, res) => {
     const rol = req.session.user.rol.trim().toUpperCase();
     const nombreUsuario = req.session.user.nombre;
     let sql = "SELECT * FROM reportes";
     let params = [];
+
     if (rol === "PROFESIONAL") {
+      // El profesional solo ve los reportes que él emitió
       sql +=
         " WHERE usuario_emisor = ? AND rol_emisor = 'PROFESIONAL' ORDER BY fecha_creacion DESC";
       params = [nombreUsuario];
     } else if (rol === "SERVICIO_TECNICO") {
-      sql += " WHERE estado = 'Pendiente' ORDER BY fecha_creacion ASC";
+      // El técnico debe ver TODOS los reportes (pendientes y corregidos)
+      // El filtrado a Pendientes y Corregidos se hará en el frontend.
+      sql += " ORDER BY fecha_creacion DESC"; // <-- CORREGIDO: Trae todos
     } else {
-      sql += " ORDER BY fecha_creacion DESC"; // Admin
+      // Admin ve todos
+      sql += " ORDER BY fecha_creacion DESC";
     }
+
     db.query(sql, params, (err, results) => {
-      if (err) return res.status(500).send("Error al obtener reportes");
+      if (err) {
+        console.error("❌ Error al obtener reportes:", err);
+        return res.status(500).send("Error al obtener reportes");
+      }
       res.json(results);
     });
   }
@@ -243,6 +251,43 @@ app.post("/api/reportes", verifyToken(["PROFESIONAL"]), (req, res) => {
     res.send("Reporte creado correctamente");
   });
 });
+// Cambiar estado del reporte
+// Corregir reporte (guardar respuesta + marcar como corregido)
+app.put("/api/reportes/:id/corregir", verifyToken(["SERVICIO_TECNICO"]), (req, res) => {
+  const id = Number(req.params.id);
+  const { respuesta } = req.body;
+  if (!respuesta || !respuesta.trim()) {
+    return res.status(400).send("Respuesta requerida");
+  }
+
+  const tecnicoNombre = req.session.user.nombre;
+  const tecnicoRol = req.session.user.rol;
+
+  const sql = `
+    UPDATE reportes
+    SET estado = 'Corregido',
+        respuesta = ?,
+        usuario_receptor = ?,
+        rol_receptor = ?,
+        fecha_respuesta = NOW()
+    WHERE id = ?
+  `;
+
+  db.query(sql, [respuesta.trim(), tecnicoNombre, tecnicoRol, id], (err, result) => {
+    if (err) {
+      console.error("❌ Error al corregir reporte:", err);
+      return res.status(500).send("Error al corregir reporte");
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).send("Reporte no encontrado");
+    }
+    res.send("Reporte corregido y respuesta guardada");
+  });
+});
+
+
+
+
 // ------------------- API PACIENTES -------------------
 // Obtener pacientes del profesional logueado
 app.get("/api/pacientes", verifyToken(["PROFESIONAL"]), (req, res) => {

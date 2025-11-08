@@ -3,19 +3,20 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Técnico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Dashboard Técnico</title>
     <link rel="stylesheet" href="/css/bootstrap.min.css">
-    <script src="/js/jquery.min.js"></script>
+    <script src="/js/jquery.min.js"></script> 
     <script src="/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/responsive.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
             background-color: #f4f6f8;
             padding-top: 30px;
+        }
+
+        .container {
+            max-width: 1400px; /* Opcional: Para usar mejor el espacio en pantallas grandes */
         }
 
         .card {
@@ -33,12 +34,24 @@
             width: 150px;
         }
 
+        /* CORRECCIÓN CRÍTICA DE CSS PARA GRÁFICOS Y RESPONSIVIDAD */
+        .graficos-realtime {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center; /* Centra los gráficos */
+        }
+        
         .graficos-realtime canvas {
             background-color: #fff;
             border-radius: 8px;
             padding: 10px;
-            max-width: 480px;
-            height: 250px;
+            /* --- AJUSTE CLAVE DE RESPONSIVIDAD --- */
+            width: 100% !important; /* En móvil, ocupa todo el ancho del contenedor flexible */
+            max-width: 450px;       /* Limita el tamaño en desktop */
+            height: 250px !important; 
+            /* ------------------------------------- */
         }
 
         .historial tbody tr:hover {
@@ -48,6 +61,26 @@
         .calibracion input {
             max-width: 200px;
             margin-right: 10px;
+            /* Añadido margen inferior para evitar colapso en móviles */
+            margin-bottom: 8px; 
+        }
+
+        .badge {
+            font-size: 0.85rem;
+        }
+
+        .chip {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #eef6ff;
+            border: 1px solid #cfe3ff;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            margin-right: 6px;
+        }
+
+        .modal textarea {
+            min-height: 120px;
         }
     </style>
 </head>
@@ -57,26 +90,24 @@
         <h2 class="mb-4">Dashboard Técnico</h2>
         <a href="/logout" class="btn btn-danger mb-3">🚪 Cerrar Sesión</a>
 
-        <!-- Valores en tiempo real -->
         <div class="card p-3">
             <h4>Valores en Tiempo Real</h4>
-            <div class="d-flex flex-wrap gap-4 align-items-center">
+            <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center">
                 <div>Fuerza: <span id="fuerzaValor" class="sensor-value">-- N</span></div>
                 <div>Ángulo: <span id="anguloValor" class="sensor-value">-- °</span></div>
                 <div>EMG: <span id="emgValor" class="sensor-value">-- mV</span></div>
                 <button id="btnRelay" class="btn btn-warning btn-relay">Encender Relé</button>
             </div>
-            <div class="graficos-realtime mt-4 d-flex flex-wrap gap-3">
+            <div class="graficos-realtime mt-4">
                 <canvas id="graficoFuerza"></canvas>
                 <canvas id="graficoAngulo"></canvas>
                 <canvas id="graficoEMG"></canvas>
             </div>
         </div>
 
-        <!-- Calibración -->
         <div class="card p-3">
             <h4>Calibración de Sensores</h4>
-            <div class="calibracion d-flex flex-wrap align-items-center mb-2">
+            <div class="calibracion d-flex flex-column flex-md-row align-items-md-center mb-2">
                 <input type="number" id="calFuerza" placeholder="Offset Fuerza (N)">
                 <input type="number" id="calAngulo" placeholder="Offset Ángulo (°)">
                 <input type="number" id="calEMG" placeholder="Offset EMG (mV)">
@@ -85,7 +116,6 @@
             <small>Ingrese los valores de corrección y haga clic en aplicar para calibrar los sensores.</small>
         </div>
 
-        <!-- Historial de mediciones recientes -->
         <div class="card p-3">
             <h4>Historial Rápido</h4>
             <table class="table table-striped historial">
@@ -100,9 +130,82 @@
                 <tbody id="historial-body"></tbody>
             </table>
         </div>
+
+        <div class="card p-3">
+            <h4>Reportes pendientes</h4>
+            <div class="table-responsive">
+                <table class="table table-hover" id="tablaPendientes">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Emisor</th>
+                            <th>Tipo</th>
+                            <th>Dispositivo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th> </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <h4>Historial de reportes</h4>
+            <div class="table-responsive">
+                <table class="table table-hover" id="tablaHistorial">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Emisor</th>
+                            <th>Rol emisor</th>
+                            <th>Tipo</th>
+                            <th>Dispositivo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th> </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <small id="infoContadorHist" class="text-muted">0 resultados</small>
+        </div>
     </div>
 
+    <div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="modalTitulo" class="modal-title">Detalle del reporte</h5>
+                    <button class="btn-close" onclick="$('#modalDetalle').modal('hide')" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="chip" id="chipId"></div>
+                        <div class="chip" id="chipFecha"></div>
+                        <div class="chip" id="chipEstado"></div>
+                        <div class="chip" id="chipTipo"></div>
+                        <div class="chip" id="chipDispositivo"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Descripción</label>
+                        <div id="detalleDescripcion" class="border rounded p-2 bg-white"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Respuesta del servicio técnico</label>
+                        <textarea id="detalleRespuesta" class="form-control"
+                            placeholder="Describe diagnóstico, acciones y pruebas realizadas..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnMarcarCorregido" class="btn btn-success">Guardar respuesta y corregir</button>
+                    <button class="btn btn-secondary" onclick="$('#modalDetalle').modal('hide')">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
+        // ======= Configuración inicial =======
         const socket = io();
         const fuerzaSpan = document.getElementById("fuerzaValor");
         const anguloSpan = document.getElementById("anguloValor");
@@ -112,61 +215,77 @@
 
         let relayEncendido = false;
         const buffer = [];
+        const tiempoLabels = [], fuerzaData = [], anguloData = [], emgData = [];
 
-        // Gráficos
-        const tiempoLabels = [];
-        const fuerzaData = [];
-        const anguloData = [];
-        const emgData = [];
+        // ❌ ELIMINADO/COMENTADO: Ya no creamos la instancia manual
+        // const modalElem = document.getElementById("modalDetalle");
+        // const modalDetalle = new bootstrap.Modal(modalElem); 
 
-        const ctxF = document.getElementById("graficoFuerza").getContext("2d");
-        const graficoFuerza = new Chart(ctxF, {
+        // Referencias dentro del modal
+        const modalTitulo = document.getElementById("modalTitulo");
+        const chipId = document.getElementById("chipId");
+        const chipFecha = document.getElementById("chipFecha");
+        const chipEstado = document.getElementById("chipEstado");
+        const chipTipo = document.getElementById("chipTipo");
+        const chipDispositivo = document.getElementById("chipDispositivo");
+        const detalleDescripcion = document.getElementById("detalleDescripcion");
+        const detalleRespuesta = document.getElementById("detalleRespuesta");
+        const btnMarcarCorregido = document.getElementById("btnMarcarCorregido");
+
+        // Variables para reportes
+        let reportes = [];
+        let seleccionado = null;
+
+        // ======= Gráficos (restante igual) =======
+        const graficoFuerza = new Chart(document.getElementById("graficoFuerza").getContext("2d"), {
             type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'Fuerza (N)', data: fuerzaData, borderColor: 'blue', backgroundColor: 'rgba(0,0,255,0.1)', tension: 0.3 }] },
-            options: { animation: false, scales: { x: { title: { display: true, text: 'Tiempo' } }, y: { title: { display: true, text: 'Fuerza (N)' } } } }
+            data: { labels: tiempoLabels, datasets: [{ label: 'Fuerza (N)', data: fuerzaData, borderColor: 'blue', backgroundColor: 'rgba(0,0,255,0.08)', tension: 0.3 }] },
+            options: { animation: false, responsive: true, maintainAspectRatio: false }
         });
 
-        const ctxA = document.getElementById("graficoAngulo").getContext("2d");
-        const graficoAngulo = new Chart(ctxA, {
+        const graficoAngulo = new Chart(document.getElementById("graficoAngulo").getContext("2d"), {
             type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'Ángulo (°)', data: anguloData, borderColor: 'green', backgroundColor: 'rgba(0,255,0,0.1)', tension: 0.3 }] },
-            options: { animation: false, scales: { x: { title: { display: true, text: 'Tiempo' } }, y: { title: { display: true, text: 'Ángulo (°)' } } } }
+            data: { labels: tiempoLabels, datasets: [{ label: 'Ángulo (°)', data: anguloData, borderColor: 'green', backgroundColor: 'rgba(0,255,0,0.08)', tension: 0.3 }] },
+            options: { animation: false, responsive: true, maintainAspectRatio: false }
         });
 
-        const ctxE = document.getElementById("graficoEMG").getContext("2d");
-        const graficoEMG = new Chart(ctxE, {
+        const graficoEMG = new Chart(document.getElementById("graficoEMG").getContext("2d"), {
             type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'EMG (mV)', data: emgData, borderColor: 'red', backgroundColor: 'rgba(255,0,0,0.1)', tension: 0.3 }] },
-            options: { animation: false, scales: { x: { title: { display: true, text: 'Tiempo' } }, y: { title: { display: true, text: 'EMG (mV)' } } } }
+            data: { labels: tiempoLabels, datasets: [{ label: 'EMG (mV)', data: emgData, borderColor: 'red', backgroundColor: 'rgba(255,0,0,0.08)', tension: 0.3 }] },
+            options: { animation: false, responsive: true, maintainAspectRatio: false }
         });
 
-        // Socket para datos en tiempo real
+        // ======= Socket (datos en tiempo real) - No se modifica =======
         socket.on("datos_mqtt", data => {
-            const ahora = new Date().toLocaleTimeString();
-            fuerzaSpan.textContent = data.fuerza.toFixed(2);
-            anguloSpan.textContent = data.angulo.toFixed(2);
-            emgSpan.textContent = data.emg.toFixed(2);
+            try {
+                const ahora = new Date().toLocaleTimeString();
+                fuerzaSpan.textContent = (data.fuerza ?? 0).toFixed(2);
+                anguloSpan.textContent = (data.angulo ?? 0).toFixed(2);
+                emgSpan.textContent = (data.emg ?? 0).toFixed(2);
 
-            buffer.push({ tiempo: ahora, fuerza: data.fuerza, angulo: data.angulo, emg: data.emg });
-            if (buffer.length > 10) buffer.shift();
+                buffer.push({ tiempo: ahora, fuerza: data.fuerza ?? 0, angulo: data.angulo ?? 0, emg: data.emg ?? 0 });
+                if (buffer.length > 10) buffer.shift();
 
-            historialBody.innerHTML = "";
-            buffer.slice().reverse().forEach(m => {
-                historialBody.innerHTML += `<tr><td>${m.tiempo}</td><td>${m.fuerza.toFixed(2)}</td><td>${m.angulo.toFixed(2)}</td><td>${m.emg.toFixed(2)}</td></tr>`;
-            });
+                historialBody.innerHTML = "";
+                buffer.slice().reverse().forEach(m => {
+                    historialBody.innerHTML += `<tr><td>${m.tiempo}</td><td>${m.fuerza.toFixed(2)}</td><td>${m.angulo.toFixed(2)}</td><td>${m.emg.toFixed(2)}</td></tr>`;
+                });
 
-            // Actualizar gráficos
-            tiempoLabels.push(ahora);
-            fuerzaData.push(data.fuerza);
-            anguloData.push(data.angulo);
-            emgData.push(data.emg);
-            if (tiempoLabels.length > 20) { tiempoLabels.shift(); fuerzaData.shift(); anguloData.shift(); emgData.shift(); }
-            graficoFuerza.update();
-            graficoAngulo.update();
-            graficoEMG.update();
+                tiempoLabels.push(ahora);
+                fuerzaData.push(data.fuerza ?? 0);
+                anguloData.push(data.angulo ?? 0);
+                emgData.push(data.emg ?? 0);
+                if (tiempoLabels.length > 40) { tiempoLabels.shift(); fuerzaData.shift(); anguloData.shift(); emgData.shift(); }
+
+                graficoFuerza.update();
+                graficoAngulo.update();
+                graficoEMG.update();
+            } catch (e) {
+                console.error("Error procesando datos MQTT:", e);
+            }
         });
 
-        // Botón para relé
+        // ======= Relé - No se modifica =======
         btnRelay.addEventListener('click', () => {
             relayEncendido = !relayEncendido;
             fetch('/api/rele', {
@@ -174,15 +293,18 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: relayEncendido })
             }).then(res => res.text())
-                .then(msg => {
+                .then(() => {
                     btnRelay.textContent = relayEncendido ? "Apagar Relé" : "Encender Relé";
                     btnRelay.classList.toggle('btn-success', relayEncendido);
                     btnRelay.classList.toggle('btn-warning', !relayEncendido);
-                }).catch(err => alert('Error con el relé'));
+                }).catch(err => {
+                    console.error("Error relé:", err);
+                    alert('Error comunicándose con el relé');
+                });
         });
 
-        // Calibración
-        function aplicarCalibracion() {
+        // ======= Calibración - No se modifica =======
+        window.aplicarCalibracion = function() {
             const offsetF = parseFloat(document.getElementById('calFuerza').value) || 0;
             const offsetA = parseFloat(document.getElementById('calAngulo').value) || 0;
             const offsetE = parseFloat(document.getElementById('calEMG').value) || 0;
@@ -192,8 +314,177 @@
                 body: JSON.stringify({ offsetF, offsetA, offsetE })
             }).then(res => res.text())
                 .then(msg => alert(msg))
-                .catch(err => alert('Error al aplicar calibración'));
+                .catch(err => { console.error("Error calibración:", err); alert('Error al aplicar calibración'); });
         }
+
+
+        // ======= Reportes (funciones de manejo) =======
+        async function cargarReportes() {
+            try {
+                const res = await fetch('/api/reportes', { cache: 'no-store' });
+                if (!res.ok) {
+                    if (res.status === 403) throw new Error("403: Acceso denegado a reportes. Intenta reiniciar sesión.");
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                reportes = await res.json();
+                renderPendientes();
+                renderHistorial();
+            } catch (err) {
+                console.error("Error cargando reportes:", err);
+                const msg = `<tr><td colspan="8" class="text-danger">Error al cargar reportes: ${err.message}</td></tr>`; // 8 columnas
+                document.querySelector("#tablaPendientes tbody").innerHTML = msg;
+                document.querySelector("#tablaHistorial tbody").innerHTML = msg;
+            }
+        }
+
+        function renderPendientes() {
+            const tbody = document.querySelector("#tablaPendientes tbody");
+            const pendientes = reportes.filter(r => String(r.estado).toLowerCase() === "pendiente");
+            tbody.innerHTML = "";
+            if (pendientes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No hay reportes pendientes</td></tr>';
+                return;
+            }
+            // 👈 Botón ÚNICO: Ver/Responder
+            pendientes.forEach(r => {
+                tbody.innerHTML += `
+        <tr>
+          <td>${r.id}</td>
+          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+          <td>${r.usuario_emisor ?? ''}</td>
+          <td>${r.tipo ?? ''}</td>
+          <td>${r.dispositivo ?? ''}</td>
+          <td><span class="badge bg-warning text-dark">Pendiente</span></td>
+          <td>
+            <button class="btn btn-sm btn-info" onclick="abrirCorregir(${r.id})">Ver/Responder</button>
+          </td>
+        </tr>`;
+            });
+        }
+
+        function renderHistorial() {
+            const tbody = document.querySelector("#tablaHistorial tbody");
+            // Filtramos los corregidos
+            const corregidos = reportes.filter(r => String(r.estado).toLowerCase() !== "pendiente"); 
+
+            document.getElementById("infoContadorHist").textContent = `${corregidos.length} resultados`;
+            tbody.innerHTML = "";
+            if (corregidos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-muted">Sin reportes corregidos</td></tr>'; // 9 columnas
+                return;
+            }
+            // 👈 Renderizado de Historial: 8 columnas de datos + 1 de acciones
+            corregidos.forEach(r => {
+                const badgeClass = String(r.estado).toLowerCase() === 'pendiente' ? 'bg-warning text-dark' : 'bg-success';
+                tbody.innerHTML += `
+        <tr>
+          <td>${r.id}</td>
+          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+          <td>${r.usuario_emisor ?? ''}</td>
+          <td>${r.rol_emisor ?? ''}</td>
+          <td>${r.tipo ?? ''}</td>
+          <td>${r.dispositivo ?? ''}</td>
+          <td><span class="badge ${badgeClass}">${r.estado}</span></td>
+          <td>
+            <button class="btn btn-sm btn-outline-info" onclick="verReporte(${r.id})">Ver</button>
+          </td>
+        </tr>`;
+            });
+        }
+
+        // ======= Modal (funciones hechas globales) - Modificadas para usar jQuery =======
+        window.verReporte = function (id) {
+            seleccionado = reportes.find(r => Number(r.id) === Number(id));
+            if (!seleccionado) return alert("Reporte no encontrado en memoria");
+
+            modalTitulo.textContent = `Reporte #${seleccionado.id}`;
+            chipId.textContent = `ID: ${seleccionado.id}`;
+            chipFecha.textContent = `Creado: ${new Date(seleccionado.fecha_creacion).toLocaleString()}`;
+            chipEstado.textContent = `Estado: ${seleccionado.estado ?? ''}`;
+            chipTipo.textContent = `Tipo: ${seleccionado.tipo ?? ''}`;
+            chipDispositivo.textContent = `Dispositivo: ${seleccionado.dispositivo ?? ''}`;
+            detalleDescripcion.textContent = seleccionado.descripcion ?? "(Sin descripción)";
+            detalleRespuesta.value = seleccionado.respuesta ?? "";
+            
+            const isCorregido = String(seleccionado.estado).toLowerCase() === 'corregido';
+            btnMarcarCorregido.disabled = isCorregido;
+            btnMarcarCorregido.textContent = isCorregido ? "Ya Corregido" : "Guardar respuesta y corregir";
+            detalleRespuesta.disabled = isCorregido;
+
+            // 👈 CAMBIO CLAVE: Usar jQuery para mostrar el modal
+            $('#modalDetalle').modal('show'); 
+        };
+
+        window.abrirCorregir = function (id) { 
+            verReporte(id); 
+            // Opcional: enfocar el textarea si no está corregido
+            if (String(seleccionado.estado).toLowerCase() !== 'corregido') { // Corregido el condicional
+                // Timeout necesario porque jQuery/Bootstrap requiere un momento para mostrar el modal
+                setTimeout(() => detalleRespuesta.focus(), 300); 
+            }
+        };
+
+        // ======= Corregir (guardar respuesta + marcar) - Modificada para usar jQuery =======
+        btnMarcarCorregido.addEventListener("click", async () => {
+            if (!seleccionado) return;
+            const respuesta = detalleRespuesta.value.trim();
+            if (!respuesta) { alert("Escribe una respuesta antes de marcar como corregido"); return; }
+
+            btnMarcarCorregido.disabled = true;
+            btnMarcarCorregido.textContent = "Guardando...";
+
+            try {
+                const res = await fetch(`/api/reportes/${seleccionado.id}/corregir`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ respuesta })
+                });
+                if (!res.ok) {
+                    const txt = await res.text().catch(() => null);
+                    throw new Error(`HTTP ${res.status} ${txt || ''}`);
+                }
+
+                // 👈 CAMBIO CLAVE: Usar jQuery para ocultar el modal
+                $('#modalDetalle').modal('hide'); 
+                await cargarReportes();
+                alert("Reporte corregido y respuesta guardada");
+            } catch (err) {
+                console.error("Error al corregir:", err);
+                alert("No se pudo marcar como corregido. Revisa consola.");
+            } finally {
+                btnMarcarCorregido.disabled = false;
+                btnMarcarCorregido.textContent = "Guardar respuesta y corregir";
+            }
+        });
+        
+        // ======= LÓGICA DE INICIALIZACIÓN (restante igual) =======
+        function initDashboard() {
+            fetch("/session")
+                .then(res => {
+                    if (!res.ok) throw new Error("Sesión inválida");
+                    return res.json();
+                })
+                .then(sessionData => {
+                    const userRol = (sessionData.rol || "").trim().toUpperCase();
+                    
+                    if (userRol === "SERVICIO_TECNICO") {
+                        cargarReportes();
+                        const btnRefrescarHist = document.getElementById("btnRefrescarHist");
+                        if (btnRefrescarHist) btnRefrescarHist.addEventListener("click", cargarReportes);
+                    } else {
+                        alert("Acceso denegado. Tu rol no es Servicio Técnico.");
+                        window.location.href = "/login_rol.html";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error en verificación de sesión:", error);
+                    alert("Acceso denegado o sesión expirada. Por favor, inicia sesión.");
+                    window.location.href = "/login_rol.html";
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', initDashboard);
+
     </script>
 </body>
 
