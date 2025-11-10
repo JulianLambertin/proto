@@ -101,16 +101,31 @@ function verifyToken(roles) {
   };
 }
 // ------------------- SESIÓN ACTUAL -------------------
+// ------------------- SESIÓN ACTUAL (MODIFICADA) -------------------
 app.get("/session", (req, res) => {
-  if (req.session && req.session.user) {
+  if (req.session && req.session.user) {
+    const sessionData = req.session.user;
+    
+    // Mapeamos el nombre del usuario logueado a 'paciente_nombre'
+    // El frontend de health.html espera 'paciente_nombre'
+    const nombreParaFrontend = sessionData.rol === 'PACIENTE' 
+        ? sessionData.nombre 
+        : sessionData.nombre; // Si fuera PROFESIONAL, puedes decidir qué mostrar aquí.
+
     res.json({
-      email: req.session.user.email,
-      rol: req.session.user.rol,
-      nombre: req.session.user.nombre,
-    });
-  } else {
-    res.status(403).send("No hay sesión válida");
-  }
+      email: sessionData.email,
+      rol: sessionData.rol,
+      nombre: sessionData.nombre, 
+      // Esta es la clave que el frontend health.html está buscando:
+      // Si el logueado es el PACIENTE, su nombre se muestra.
+      // Si el logueado es el PROFESIONAL, se podría necesitar lógica extra.
+      // Pero para simplificar, usaremos el nombre de la sesión.
+      // Asumiendo que health.html solo lo usa el PACIENTE:
+      paciente_nombre: nombreParaFrontend 
+    });
+  } else {
+    res.status(403).send("No hay sesión válida");
+  }
 });
 // ------------------- RUTAS PRINCIPALES -------------------
 app.get("/", (req, res) => res.redirect("/index.html"));

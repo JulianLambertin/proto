@@ -5,83 +5,112 @@
    <meta charset="utf-8">
    <meta http-equiv="X-UA-Compatible" content="IE=edge">
    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-   <title>Health</title>
+   <title>Terapia y Monitoreo - KneeCare</title>
+   <link rel="icon" type="image/png" href="/icons/health.png" />
    <link rel="stylesheet" href="/css/bootstrap.min.css">
-   <script src="/js/jquery.min.js"></script>
-   <script src="/js/owl.carousel.js"></script>
    <link rel="stylesheet" href="/css/style.css">
    <link rel="stylesheet" href="/css/responsive.css">
-   <link rel="icon" href="/images/fevicon.png" type="image/gif" />
-   <link rel="stylesheet" href="/css/jquery.mCustomScrollbar.min.css">
    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+   <link rel="stylesheet" href="/css/jquery.mCustomScrollbar.min.css">
    <link rel="stylesheet" href="/css/owl.carousel.min.css">
    <link rel="stylesheet" href="/css/owl.theme.default.min.css">
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css"
       media="screen">
+
+   <script src="/js/jquery.min.js"></script>
+   <script src="/js/bootstrap.bundle.min.js"></script>
    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    <script src="/socket.io/socket.io.js"></script>
 
    <style>
-      /* Navbar fijo */
+      body {
+         padding-top: 80px;
+         /* Ajuste para navbar fijo */
+      }
+
+      /* 1. ESTILO DEL NAVBAR RESTAURADO Y FIJO */
       .header_section .navbar {
-         position: sticky;
+         position: fixed;
+         width: 100%;
          top: 0;
          z-index: 1000;
-         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+         background-color: #ffffff !important;
+         /* Fondo Blanco */
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+         /* Sombra suave */
+         border-bottom: 1px solid #e0e0e0;
+         /* Borde sutil */
       }
 
-      .header_section .navbar {
-         border-bottom: none;
-         /* Quita cualquier borde */
-         box-shadow: none;
-         /* Quita sombra si hubiera */
-         position: sticky;
-         /* Hace que el navbar quede fijo al scrollear */
-         top: 0;
-         z-index: 9999;
+      /* 2. IDENTIFICACIÓN DEL PACIENTE */
+      #nombrePaciente {
+         font-size: 1.5rem;
+         font-weight: 700;
+         color: #007bff;
+         display: block;
+         margin-top: -10px;
+         margin-bottom: 20px;
       }
 
-      /* Dashboard ajustes mínimos */
+      /* Dashboard ajustes visuales */
       .datos-realtime {
          display: flex;
          flex-wrap: wrap;
          justify-content: center;
+         align-items: center;
          gap: 20px;
          margin-bottom: 20px;
          font-size: 1.2rem;
+         font-weight: 500;
       }
 
-      .datos-realtime .btn {
-         margin-top: 0.5rem;
+      .datos-realtime strong {
+         font-size: 1.8rem;
+         margin-left: 5px;
       }
 
       .graficos-realtime {
          display: flex;
          flex-wrap: wrap;
          justify-content: center;
-         gap: 20px;
+         gap: 25px;
       }
 
       .graficos-realtime canvas {
          background-color: #fff;
          border: 1px solid #ddd;
+         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
          padding: 10px;
          border-radius: 8px;
-         width: 100%;
-         max-width: 480px;
-         height: 250px;
+         width: 100% !important;
+         max-width: 400px;
+         height: 250px !important;
       }
 
-      /* Botón ver mediciones alineado debajo de los gráficos */
-      .btn-ver-mediciones {
-         display: block;
-         margin: 20px auto 0 auto;
+      /* Contenedor de Controles */
+      .controles-terapia {
+         display: flex;
+         flex-wrap: wrap;
+         justify-content: center;
+         gap: 10px;
+         margin-top: 20px;
+      }
+
+      /* Corrección de cierre de modal para Bootstrap 4/5 */
+      .modal-header .close {
+         padding: 1rem 1rem;
+         margin: -1rem -1rem -1rem auto;
+      }
+
+      @media (max-width: 992px) {
+         .graficos-realtime canvas {
+            max-width: 100%;
+         }
       }
    </style>
 </head>
 
 <body>
-   <!-- header section start -->
    <div class="header_section">
       <nav class="navbar navbar-expand-lg navbar-light bg-light">
          <div class="logo">
@@ -95,147 +124,309 @@
                <li class="nav-item"><a class="nav-link" href="/index.html">Home</a></li>
                <li class="nav-item"><a class="nav-link" href="/medicine.html">Registro</a></li>
                <li class="nav-item active"><a class="nav-link" href="/health.html">Terapia</a></li>
+               <li class="nav-item"><a class="nav-link" href="/logout">Cerrar Sesión <i class="fa fa-sign-out"></i></a>
+               </li>
             </ul>
          </div>
       </nav>
    </div>
-   <!-- header section end -->
-
-   <!-- health section start -->
    <div class="health_section layout_padding">
       <div class="container">
-         <h2 class="text-center mb-4">Valores de Medición</h2>
-
-         <!-- Botones y valores juntos -->
-         <div class="datos-realtime">
-            <div>Fuerza: <strong><span id="fuerzaValor">--</span> N</strong></div>
-            <div>Ángulo: <strong><span id="anguloValor">--</span> °</strong></div>
-            <button id="btnIniciar" class="btn btn-primary">▶ Iniciar</button>
-            <button id="btnPausar" class="btn btn-secondary" disabled>⏸ Pausar</button>
-            <button id="btnDetener" class="btn btn-danger" disabled>⏹ Detener</button>
-            <button id="btnGuardar" class="btn btn-success" disabled>💾 Guardar</button>
-            <a href="mediciones.html" class="btn btn-success">Ver Mediciones</a>
+         <h2 class="text-center mb-1">📈 Monitoreo de Terapia en Tiempo Real</h2>
+         <div class="text-center mb-5">
+            Paciente: <strong id="nombrePaciente">Cargando...</strong>
          </div>
 
-         <!-- Gráficos -->
-         <div class="graficos-realtime mt-4">
+         <div class="datos-realtime alert alert-info p-3 mb-4">
+            <div>Fuerza: <strong class="text-primary"><span id="fuerzaValor">--</span> N</strong></div>
+            <div>Ángulo: <strong class="text-success"><span id="anguloValor">--</span> °</strong></div>
+            <div>EMG: <strong class="text-danger"><span id="emgValor">--</span> mV</strong></div>
+         </div>
+
+         <div class="graficos-realtime">
             <canvas id="graficoFuerza"></canvas>
             <canvas id="graficoAngulo"></canvas>
+            <canvas id="graficoEMG"></canvas>
+         </div>
+
+         <hr class="mt-5 mb-4">
+
+         <div class="controles-terapia">
+            <button id="btnIniciar" class="btn btn-primary fw-bold"><i class="fa fa-play me-1"></i> Iniciar</button>
+            <button id="btnPausar" class="btn btn-secondary fw-bold" disabled><i class="fa fa-pause me-1"></i>
+               Pausar</button>
+            <button id="btnDetener" class="btn btn-danger fw-bold" disabled><i class="fa fa-stop me-1"></i> Detener y
+               Limpiar</button>
+
+            <button id="btnGuardar" class="btn btn-success fw-bold" disabled><i class="fa fa-save me-1"></i> Guardar (25
+               Mediciones)</button>
+            <button id="btnDescargar" class="btn btn-info fw-bold" data-toggle="modal" data-target="#modalDescarga"
+               disabled><i class="fa fa-download me-1"></i> Descargar Gráfico</button>
+            <a href="/mediciones.html" class="btn btn-dark fw-bold"><i class="fa fa-list me-1"></i> Ver Historial</a>
          </div>
       </div>
    </div>
-   <!-- health section end -->
-
-   <style>
-      /* Ajustes mínimos para los botones y gráficos */
-      .datos-realtime {
-         display: flex;
-         flex-wrap: wrap;
-         justify-content: center;
-         gap: 10px;
-         margin-bottom: 20px;
-         font-size: 1.2rem;
-      }
-
-      .graficos-realtime {
-         display: flex;
-         flex-wrap: wrap;
-         justify-content: center;
-         gap: 20px;
-      }
-
-      .graficos-realtime canvas {
-         background-color: #fff;
-         border: 1px solid #ddd;
-         padding: 10px;
-         border-radius: 8px;
-         width: 100%;
-         max-width: 480px;
-         height: 250px;
-      }
-
-      .datos-realtime .btn,
-      .datos-realtime a.btn {
-         margin-top: 0.3rem;
-      }
-   </style>
-
+   <div class="modal fade" id="modalDescarga" tabindex="-1" role="dialog" aria-labelledby="modalDescargaLabel"
+      aria-hidden="true">
+      <div class="modal-dialog" role="document">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h5 class="modal-title" id="modalDescargaLabel">Seleccionar Gráfico para Descargar</h5>
+               <button type="button" class="close" data-dismiss="modal" aria-label="Close"
+                  onclick="$('#modalDescarga').modal('hide');">
+                  <span aria-hidden="true">&times;</span>
+               </button>
+            </div>
+            <div class="modal-body">
+               <p>¿Qué gráfico deseas descargar como imagen (PNG)?</p>
+               <button id="descargarFuerza" class="btn btn-outline-primary mb-2"
+                  onclick="descargarGrafico('graficoFuerza')">Fuerza</button>
+               <button id="descargarAngulo" class="btn btn-outline-success mb-2"
+                  onclick="descargarGrafico('graficoAngulo')">Ángulo</button>
+               <button id="descargarEMG" class="btn btn-outline-danger mb-2"
+                  onclick="descargarGrafico('graficoEMG')">EMG</button>
+            </div>
+         </div>
+      </div>
+   </div>
    <script>
+      // --- Variables Globales y Estado ---
+      const socket = io();
+      const MAX_DATA_POINTS = 100; // Mostrar 100 puntos en el gráfico
+      const MAX_GUARDAR_PUNTOS = 25; // Guardar las últimas 25 mediciones
+
       const tiempoLabels = [];
       const fuerzaData = [];
       const anguloData = [];
+      const emgData = [];
 
-      const ctxF = document.getElementById("graficoFuerza").getContext("2d");
-      const graficoFuerza = new Chart(ctxF, {
-         type: 'line',
-         data: { labels: tiempoLabels, datasets: [{ label: 'Fuerza (N)', data: fuerzaData, borderColor: 'blue', backgroundColor: 'rgba(0, 0, 255, 0.1)', tension: 0.3 }] },
-         options: { animation: false, scales: { x: { title: { display: true, text: 'Tiempo' } }, y: { title: { display: true, text: 'Fuerza (N)' } } } }
-      });
-
-      const ctxA = document.getElementById("graficoAngulo").getContext("2d");
-      const graficoAngulo = new Chart(ctxA, {
-         type: 'line',
-         data: { labels: tiempoLabels, datasets: [{ label: 'Ángulo (°)', data: anguloData, borderColor: 'green', backgroundColor: 'rgba(0, 255, 0, 0.1)', tension: 0.3 }] },
-         options: { animation: false, scales: { x: { title: { display: true, text: 'Tiempo' } }, y: { title: { display: true, text: 'Ángulo (°)' } } } }
-      });
-
-      const socket = io();
-      const fuerzaSpan = document.getElementById("fuerzaValor");
-      const anguloSpan = document.getElementById("anguloValor");
-      const btnGuardar = document.getElementById("btnGuardar");
-
-      // Buffer de mediciones
       const bufferMediciones = [];
 
-      socket.on("datos_mqtt", data => {
-         const ahora = new Date().toLocaleTimeString();
-         fuerzaSpan.textContent = data.fuerza.toFixed(2);
-         anguloSpan.textContent = data.angulo.toFixed(2);
-
-         bufferMediciones.push({ tiempo: ahora, fuerza: data.fuerza, angulo: data.angulo });
-         if (bufferMediciones.length > 10) bufferMediciones.shift();
-
-         tiempoLabels.push(ahora);
-         fuerzaData.push(data.fuerza);
-         anguloData.push(data.angulo);
-         if (tiempoLabels.length > 20) { tiempoLabels.shift(); fuerzaData.shift(); anguloData.shift(); }
-
-         graficoFuerza.update();
-         graficoAngulo.update();
-
-         btnGuardar.disabled = bufferMediciones.length === 0;
-      });
-
-      function guardarMedicion() {
-         if (bufferMediciones.length === 0) { alert('No hay mediciones para guardar'); return; }
-         fetch('/api/guardar-mediciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mediciones: bufferMediciones })
-         })
-            .then(res => res.text())
-            .then(msg => alert(msg))
-            .catch(err => { console.error(err); alert('Error al guardar'); });
-      }
-
-      // Botones de control
-      const btnIniciar = document.getElementById("btnIniciar");
-      const btnPausar = document.getElementById("btnPausar");
-      const btnDetener = document.getElementById("btnDetener");
       let medicionActiva = false;
       let pausado = false;
 
-      btnIniciar.addEventListener("click", () => {
-         medicionActiva = true; pausado = false;
-         btnIniciar.disabled = true; btnPausar.disabled = false; btnDetener.disabled = false;
+      // --- Referencias DOM ---
+      const fuerzaSpan = document.getElementById("fuerzaValor");
+      const anguloSpan = document.getElementById("anguloValor");
+      const emgSpan = document.getElementById("emgValor");
+      const nombrePacienteElement = document.getElementById("nombrePaciente");
+      const btnIniciar = document.getElementById("btnIniciar");
+      const btnPausar = document.getElementById("btnPausar");
+      const btnDetener = document.getElementById("btnDetener");
+      const btnGuardar = document.getElementById("btnGuardar");
+      const btnDescargar = document.getElementById("btnDescargar");
+
+      // --- Inicialización de Gráficos ---
+      function crearGrafico(id, label, dataArray, color, yMin, yMax) {
+         const ctx = document.getElementById(id).getContext("2d");
+         return new Chart(ctx, {
+            type: 'line',
+            data: {
+               labels: tiempoLabels,
+               datasets: [{
+                  label: label,
+                  data: dataArray,
+                  borderColor: color,
+                  backgroundColor: `${color.replace('rgb', 'rgba').replace(')', ', 0.1)')}`,
+                  tension: 0.4, // Curva más suave
+                  pointRadius: 0, // Ocultar puntos
+                  borderWidth: 2
+               }]
+            },
+            options: {
+               animation: false, // Sin animación para fluidez en tiempo real
+               responsive: true,
+               maintainAspectRatio: false,
+               scales: {
+                  x: {
+                     title: { display: true, text: 'Tiempo' },
+                     ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } // Mejor gestión de etiquetas de tiempo
+                  },
+                  y: {
+                     title: { display: true, text: label.split(' ')[0] },
+                     min: yMin,
+                     max: yMax
+                  }
+               },
+               plugins: {
+                  legend: { display: true, position: 'top' }, // Mostrar leyenda para identificar el gráfico
+                  title: { display: true, text: label, font: { size: 14 } } // Título claro
+               },
+               elements: { line: { tension: 0.4 } }
+            }
+         });
+      }
+
+      // Definición de rangos fijos para cada gráfico:
+      const graficoFuerza = crearGrafico("graficoFuerza", 'Fuerza (N)', fuerzaData, 'rgb(0, 123, 255)', 0, 150);
+      const graficoAngulo = crearGrafico("graficoAngulo", 'Ángulo (°)', anguloData, 'rgb(40, 167, 69)', 0, 90);
+      const graficoEMG = crearGrafico("graficoEMG", 'EMG (mV)', emgData, 'rgb(220, 53, 69)', 0, 5);
+
+      const todosLosGraficos = [graficoFuerza, graficoAngulo, graficoEMG];
+
+
+      // --- Socket (Recepción de Datos) ---
+      socket.on("datos_mqtt", data => {
+         // Actualizar valores en el DOM (siempre)
+         fuerzaSpan.textContent = (data.fuerza ?? 0).toFixed(2);
+         anguloSpan.textContent = (data.angulo ?? 0).toFixed(2);
+         emgSpan.textContent = (data.emg ?? 0).toFixed(2);
+
+         if (medicionActiva && !pausado) {
+            const ahora = new Date().toLocaleTimeString('es-ES', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // 1. Almacenar en buffer para guardado (últimas 25)
+            bufferMediciones.push({
+               tiempo: new Date().toISOString(),
+               fuerza: data.fuerza ?? 0,
+               angulo: data.angulo ?? 0,
+               emg: data.emg ?? 0
+            });
+            if (bufferMediciones.length > MAX_GUARDAR_PUNTOS) bufferMediciones.shift();
+
+            // 2. Actualizar datos de los gráficos (últimos 100)
+            tiempoLabels.push(ahora);
+            fuerzaData.push(data.fuerza ?? 0);
+            anguloData.push(data.angulo ?? 0);
+            emgData.push(data.emg ?? 0);
+
+            if (tiempoLabels.length > MAX_DATA_POINTS) {
+               tiempoLabels.shift();
+               fuerzaData.shift();
+               anguloData.shift();
+               emgData.shift();
+            }
+
+            // 3. Actualizar Gráficos
+            todosLosGraficos.forEach(g => g.update());
+
+            // 4. Habilitar botón de Guardar/Descargar
+            btnGuardar.disabled = false;
+            btnDescargar.disabled = false;
+         }
       });
+
+
+      // --- Lógica de Control de Flujo (Iniciar, Pausar, Detener) ---
+
+      btnIniciar.addEventListener("click", () => {
+         medicionActiva = true;
+         pausado = false;
+         btnIniciar.disabled = true;
+         btnPausar.disabled = false;
+         btnDetener.disabled = false;
+         btnPausar.textContent = "⏸ Pausar";
+         console.log("Medición Iniciada");
+      });
+
       btnPausar.addEventListener("click", () => {
          pausado = !pausado;
          btnPausar.textContent = pausado ? "▶ Reanudar" : "⏸ Pausar";
+         console.log(pausado ? "Medición Pausada" : "Medición Reanudada");
       });
+
       btnDetener.addEventListener("click", () => {
-         medicionActiva = false; pausado = false;
-         btnIniciar.disabled = false; btnPausar.disabled = true; btnDetener.disabled = true;
+         medicionActiva = false;
+         pausado = false;
+
+         // Limpiar datos y gráficos
+         tiempoLabels.length = 0;
+         fuerzaData.length = 0;
+         anguloData.length = 0;
+         emgData.length = 0;
+         bufferMediciones.length = 0;
+
+         todosLosGraficos.forEach(g => g.update());
+
+         // Resetear botones
+         btnIniciar.disabled = false;
+         btnPausar.disabled = true;
+         btnDetener.disabled = true;
+         btnGuardar.disabled = true;
+         btnDescargar.disabled = true;
          btnPausar.textContent = "⏸ Pausar";
+
+         console.log("Medición Detenida y Gráficos Limpiados");
       });
+
+
+      // --- Lógica de Acciones (Guardar y Descargar) ---
+
+      btnGuardar.addEventListener("click", () => {
+         if (bufferMediciones.length === 0) {
+            alert('No hay mediciones para guardar. Inicia una terapia primero.');
+            return;
+         }
+
+         const datosAGuardar = bufferMediciones.slice(0, MAX_GUARDAR_PUNTOS);
+
+         fetch('/api/guardar-mediciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mediciones: datosAGuardar })
+         })
+            .then(res => {
+               if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+               return res.json();
+            })
+            .then(response => {
+               alert(`✅ Guardado Exitoso: Se guardaron ${datosAGuardar.length} mediciones. Mensaje: ${response.message}`);
+               bufferMediciones.length = 0;
+               btnGuardar.disabled = true;
+            })
+            .catch(err => {
+               console.error("Error al guardar mediciones:", err);
+               alert('❌ Error al guardar mediciones. Revisa la consola para más detalles.');
+            });
+      });
+
+      window.descargarGrafico = function (canvasId) {
+         const canvas = document.getElementById(canvasId);
+         const dataURL = canvas.toDataURL("image/png");
+
+         const a = document.createElement('a');
+         // Intentar obtener el título del gráfico desde la configuración de Chart.js
+         let titulo = "Gráfico";
+         const chart = todosLosGraficos.find(g => g.canvas.id === canvasId);
+         if (chart) {
+            titulo = chart.options.plugins.title.text.replace(/ /g, '_');
+         }
+
+         a.href = dataURL;
+         a.download = `KneeCare_Terapia_${titulo}_${new Date().toISOString().slice(0, 10)}.png`;
+
+         document.body.appendChild(a);
+         a.click();
+         document.body.removeChild(a);
+
+         $('#modalDescarga').modal('hide');
+      };
+
+      // --- Lógica de Inicialización (Verificación de Sesión y Paciente) ---
+      function initDashboard() {
+         fetch("/session")
+            .then(res => {
+               if (!res.ok) throw new Error("Sesión inválida");
+               return res.json();
+            })
+            .then(sessionData => {
+               console.log(`Sesión verificada. Rol: ${sessionData.rol}`);
+
+               // Lee la clave 'paciente_nombre' (que debe ser enviada por tu backend)
+               const nombrePaciente = sessionData.paciente_nombre || sessionData.nombre || "Paciente No Asignado";
+               nombrePacienteElement.textContent = nombrePaciente;
+            })
+            .catch(error => {
+               console.error("Error en verificación de sesión:", error);
+               alert("Acceso denegado o sesión expirada. Por favor, inicia sesión.");
+               nombrePacienteElement.textContent = "Error de Sesión";
+               window.location.href = "/login_rol.html";
+            });
+      }
+
+      document.addEventListener('DOMContentLoaded', initDashboard);
+
    </script>
+</body>
+
+</html>
