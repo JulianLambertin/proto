@@ -5,16 +5,17 @@
     <link rel="icon" type="image/png" href="/icons/engineering.png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Técnico - KneeCare</title> 
+    <title>Dashboard Técnico - KneeCare</title>
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
     <script src="/js/jquery.min.js"></script>
-    <script src="/js/bootstrap.bundle.min.js"></script> 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>   
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-        <style>
+    <style>
         body {
             background-color: #f4f6f8;
+            padding-top: 80px;
+            /* Espacio para la barra de navegación fija */
         }
 
         .container {
@@ -34,36 +35,16 @@
             color: #007bff;
         }
 
-        .btn-relay {
+        /* Estilos para los 3 botones de actuadores */
+        .btn-actuador {
             min-width: 150px;
             font-weight: 600;
-        }
-
-        .graficos-realtime {
-            width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .graficos-realtime canvas {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 10px;
-            width: 100% !important;
-            max-width: 450px;
-            height: 250px !important;
+            margin-right: 15px;
+            margin-bottom: 10px;
         }
 
         .historial tbody tr:hover {
             background-color: #e6f7f7;
-        }
-
-        .calibracion input {
-            max-width: 200px;
-            margin-right: 10px;
-            margin-bottom: 8px;
         }
 
         .badge {
@@ -86,195 +67,170 @@
         .modal textarea {
             min-height: 120px;
         }
-
-        /* Ajuste para calibración en móviles */
-        @media (max-width: 768px) {
-            .calibracion .btn {
-                width: 100%;
-                margin-top: 5px;
-            }
-
-            .calibracion input {
-                width: 100%;
-                max-width: none;
-            }
-        }
     </style>
 </head>
 
 <body>
-        <nav class="navbar navbar-dark bg-dark shadow-sm mb-5">
-                <div class="container-fluid container">
-                        <h2 class="navbar-brand m-0 text-info fw-bold">⚙️ Dashboard Servicio Técnico</h2>
-                        <a href="/logout" class="btn btn-danger fw-semibold">
-                                <i class="fa fa-sign-out me-2"></i>Cerrar Sesión
-                            </a>
-                    </div>
-            </nav>
+    <nav class="navbar navbar-dark bg-dark shadow-sm fixed-top">
+        <div class="container-fluid container">
+            <h2 class="navbar-brand m-0 text-info fw-bold">⚙️ Dashboard Servicio Técnico</h2>
+            <a href="/logout" class="btn btn-danger fw-semibold">
+                <i class="fa fa-sign-out me-2"></i>Cerrar Sesión
+            </a>
+        </div>
+    </nav>
 
-        <div class="container">
+    <div class="container">
 
-                <div class="card bg-white">
-                        <h4 class="mb-4 text-primary fw-bold"><i class="fa fa-tachometer me-2"></i> Val. Tiempo Real y
-                Control</h4>
-                        <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center mb-4">
-                                <div><span class="text-muted">Fuerza:</span> <span id="fuerzaValor"
-                        class="sensor-value text-success">-- N</span></div>
-                                <div><span class="text-muted">Ángulo:</span> <span id="anguloValor"
-                        class="sensor-value text-primary">-- °</span></div>
-                                <div><span class="text-muted">EMG:</span> <span id="emgValor"
-                        class="sensor-value text-danger">-- mV</span></div>
-                                <button id="btnRelay" class="btn btn-warning btn-relay ms-auto">
-                                        <i class="fa fa-plug me-2"></i> Encender Relé
-                                    </button>
-                            </div>
-                        <div class="graficos-realtime mt-4">
-                                <canvas id="graficoFuerza"></canvas>
-                                <canvas id="graficoAngulo"></canvas>
-                                <canvas id="graficoEMG"></canvas>
-                            </div>
-                    </div>
-
-               
-        <hr class="my-4">
-
-                <div class="card bg-white">
-                        <h4 class="mb-3 text-secondary fw-bold"><i class="fa fa-cog me-2"></i> Calibración de Sensores
+        <div class="card bg-white">
+            <h4 class="mb-4 text-primary fw-bold"><i class="fa fa-tachometer me-2"></i> Val. Tiempo Real y Control
             </h4>
-                        <div
-                class="calibracion d-flex flex-column flex-md-row align-items-md-center align-items-start mb-2">
-                                <input type="number" class="form-control" id="calFuerza"
-                    placeholder="Offset Fuerza (N)">
-                                <input type="number" class="form-control" id="calAngulo"
-                    placeholder="Offset Ángulo (°)">
-                                <input type="number" class="form-control" id="calEMG" placeholder="Offset EMG (mV)">
-                                <button class="btn btn-primary fw-bold" onclick="aplicarCalibracion()">
-                                        <i class="fa fa-check me-2"></i> Aplicar
-                                    </button>
-                            </div>
-                        <small class="text-muted">Ingrese los valores de corrección (ej: 0.5) para ajustar los sensores
-                y haga clic en aplicar.</small>
-                    </div>
 
-               
+            <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center mb-4">
+                <div><span class="text-muted">Fuerza:</span> <span id="fuerzaValor" class="sensor-value text-success">--
+                        N</span></div>
+                <div><span class="text-muted">Ángulo:</span> <span id="anguloValor" class="sensor-value text-primary">--
+                        °</span></div>
+                <div><span class="text-muted">EMG:</span> <span id="emgValor" class="sensor-value text-danger">--
+                        mV</span></div>
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="text-secondary fw-bold mb-3"><i class="fa fa-wrench me-2"></i> Control de Actuadores</h5>
+            <div id="actuadoresContainer" class="d-flex flex-wrap">
+                <button id="btnRelay" class="btn btn-warning btn-actuador" data-actuador="relay">
+                    <i class="fa fa-plug me-2"></i> Relé: OFF
+                </button>
+                <button id="btnMotor1" class="btn btn-warning btn-actuador" data-actuador="motor1">
+                    <i class="fa fa-cogs me-2"></i> Motor 1: OFF
+                </button>
+                <button id="btnMotor2" class="btn btn-warning btn-actuador" data-actuador="motor2">
+                    <i class="fa fa-cogs me-2"></i> Motor 2: OFF
+                </button>
+            </div>
+
+        </div>
+
+        <hr class="my-4">
+        <div class="card bg-white">
+            <h4 class="mb-3 text-danger fw-bold"><i class="fa fa-warning me-2"></i> Reportes pendientes de Corrección
+            </h4>
+            <div class="table-responsive">
+                <table class="table table-hover" id="tablaPendientes">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Emisor</th>
+                            <th>Tipo</th>
+                            <th>Dispositivo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card bg-white">
+            <h4 class="mb-3 text-success fw-bold"><i class="fa fa-clock-o me-2"></i> Historial Rápido (últimos 10 datos)
+            </h4>
+            <div class="table-responsive">
+                <table class="table table-striped historial">
+                    <thead>
+                        <tr>
+                            <th>Tiempo</th>
+                            <th>Fuerza (N)</th>
+                            <th>Ángulo (°)</th>
+                            <th>EMG (mV)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historial-body"></tbody>
+                </table>
+            </div>
+        </div>
+
         <hr class="my-4">
 
-                <div class="card bg-white">
-                        <h4 class="mb-3 text-danger fw-bold"><i class="fa fa-warning me-2"></i> Reportes pendientes de
-                Corrección</h4>
-                        <div class="table-responsive">
-                                <table class="table table-hover" id="tablaPendientes">
-                                        <thead>
-                                                <tr>
-                                                        <th>ID</th>
-                                                        <th>Fecha</th>
-                                                        <th>Emisor</th>
-                                                        <th>Tipo</th>
-                                                        <th>Dispositivo</th>
-                                                        <th>Estado</th>
-                                                        <th>Acciones</th>
-                                                    </tr>
-                                            </thead>
-                                        <tbody></tbody>
-                                    </table>
-                            </div>
-                    </div>
+        <div class="card bg-white">
+            <h4 class="mb-3 text-info fw-bold"><i class="fa fa-history me-2"></i> Historial de Reportes Corregidos</h4>
+            <div class="table-responsive">
+                <table class="table table-hover" id="tablaHistorial">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha Creación</th>
+                            <th>Emisor</th>
+                            <th>Rol emisor</th>
+                            <th>Tipo</th>
+                            <th>Dispositivo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <small id="infoContadorHist" class="text-muted">0 resultados</small>
+        </div>
 
-                <div class="card bg-white">
-                        <h4 class="mb-3 text-success fw-bold"><i class="fa fa-clock-o me-2"></i> Historial Rápido
-                (últimos 10)</h4>
-                        <div class="table-responsive">
-                                <table class="table table-striped historial">
-                                        <thead>
-                                                <tr>
-                                                        <th>Tiempo</th>
-                                                        <th>Fuerza (N)</th>
-                                                        <th>Ángulo (°)</th>
-                                                        <th>EMG (mV)</th>
-                                                    </tr>
-                                            </thead>
-                                        <tbody id="historial-body"></tbody>
-                                    </table>
-                            </div>
-                    </div>
-
-               
-        <hr class="my-4">
-
-                <div class="card bg-white">
-                        <h4 class="mb-3 text-info fw-bold"><i class="fa fa-history me-2"></i> Historial de Reportes
-                Corregidos</h4>
-                        <div class="table-responsive">
-                                <table class="table table-hover" id="tablaHistorial">
-                                        <thead>
-                                                <tr>
-                                                        <th>ID</th>
-                                                        <th>Fecha Creación</th>
-                                                        <th>Emisor</th>
-                                                        <th>Rol emisor</th>
-                                                        <th>Tipo</th>
-                                                        <th>Dispositivo</th>
-                                                        <th>Estado</th>
-                                                        <th>Acciones</th>
-                                                    </tr>
-                                            </thead>
-                                        <tbody></tbody>
-                                    </table>
-                            </div>
-                        <small id="infoContadorHist" class="text-muted">0 resultados</small>
-                    </div>
-           
     </div>
 
-            <div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                        <div class="modal-content">
-                                <div class="modal-header bg-dark text-white">
-                                        <h5 id="modalTitulo" class="modal-title fw-bold">Reporte de Falla #</h5>
-                                                            <button class="btn-close btn-close-white"
-                        onclick="$('#modalDetalle').modal('hide')" aria-label="Cerrar"></button>
-                                    </div>
-                                <div class="modal-body">
-                                        <div class="mb-4 d-flex flex-wrap">
-                                                <div class="chip" id="chipId"></div>
-                                                <div class="chip" id="chipFecha"></div>
-                                                <div class="chip" id="chipEstado"></div>
-                                                <div class="chip" id="chipTipo"></div>
-                                                <div class="chip" id="chipDispositivo"></div>
-                                            </div>
-                                        <div class="mb-4">
-                                                <label class="fw-bold">Descripción del Reporte (Emisor)</label>
-                                                <div id="detalleDescripcion" class="border rounded p-3 bg-light"
-                            style="min-height: 80px;"></div>
-                                            </div>
-                                        <div class="mb-3">
-                                                <label class="fw-bold">Respuesta del Servicio Técnico (Tú)</label>
-                                                <textarea id="detalleRespuesta" class="form-control"                    
-                                    placeholder="Describe diagnóstico, acciones y pruebas realizadas..."></textarea>
-                                            </div>
-                                    </div>
-                                <div class="modal-footer">
-                                        <button id="btnMarcarCorregido" class="btn btn-success fw-bold">
-                                                <i class="fa fa-check-square-o me-2"></i> Guardar respuesta y corregir
-                                            </button>
-                                                            <button class="btn btn-secondary"
-                        onclick="$('#modalDetalle').modal('hide')">Cerrar</button>
-                                    </div>
-                            </div>
-                    </div>
-            </div>
+    <div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 id="modalTitulo" class="modal-title fw-bold">Reporte de Falla #</h5>
+                    <button class="btn-close btn-close-white" onclick="$('#modalDetalle').modal('hide')"
+                        aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4 d-flex flex-wrap">
+                        <div class="chip" id="chipId"></div>
+                        <div class="chip" id="chipFecha"></div>
+                        <div class="chip" id="chipEstado"></div>
+                        <div class="chip" id="chipTipo"></div>
+                        <div class="chip" id="chipDispositivo"></div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="fw-bold">Descripción del Reporte (Emisor)</label>
+                        <div id="detalleDescripcion" class="border rounded p-3 bg-light" style="min-height: 80px;">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Respuesta del Servicio Técnico (Tú)</label>
+                        <textarea id="detalleRespuesta" class="form-control"
+                            placeholder="Describe diagnóstico, acciones y pruebas realizadas..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnMarcarCorregido" class="btn btn-success fw-bold">
+                        <i class="fa fa-check-square-o me-2"></i> Guardar respuesta y corregir
+                    </button>
+                    <button class="btn btn-secondary" onclick="$('#modalDetalle').modal('hide')">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         // ======= Configuración inicial =======
         const socket = io();
         const fuerzaSpan = document.getElementById("fuerzaValor");
         const anguloSpan = document.getElementById("anguloValor");
         const emgSpan = document.getElementById("emgValor");
-        const btnRelay = document.getElementById("btnRelay");
         const historialBody = document.getElementById("historial-body");
 
-        let relayEncendido = false;
+        const actuadores = {
+            'relay': { estado: false, btn: document.getElementById("btnRelay") },
+            'motor1': { estado: false, btn: document.getElementById("btnMotor1") },
+            'motor2': { estado: false, btn: document.getElementById("btnMotor2") }
+        };
+
         const buffer = [];
-        const tiempoLabels = [], fuerzaData = [], anguloData = [], emgData = [];
+        let reportes = [];
+        let seleccionado = null;
 
         // Referencias dentro del modal
         const modalTitulo = document.getElementById("modalTitulo");
@@ -287,28 +243,6 @@
         const detalleRespuesta = document.getElementById("detalleRespuesta");
         const btnMarcarCorregido = document.getElementById("btnMarcarCorregido");
 
-        // Variables para reportes
-        let reportes = [];
-        let seleccionado = null;
-
-        // ======= Gráficos =======
-        const graficoFuerza = new Chart(document.getElementById("graficoFuerza").getContext("2d"), {
-            type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'Fuerza (N)', data: fuerzaData, borderColor: 'blue', backgroundColor: 'rgba(0,0,255,0.08)', tension: 0.3 }] },
-            options: { animation: false, responsive: true, maintainAspectRatio: false }
-        });
-
-        const graficoAngulo = new Chart(document.getElementById("graficoAngulo").getContext("2d"), {
-            type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'Ángulo (°)', data: anguloData, borderColor: 'green', backgroundColor: 'rgba(0,255,0,0.08)', tension: 0.3 }] },
-            options: { animation: false, responsive: true, maintainAspectRatio: false }
-        });
-
-        const graficoEMG = new Chart(document.getElementById("graficoEMG").getContext("2d"), {
-            type: 'line',
-            data: { labels: tiempoLabels, datasets: [{ label: 'EMG (mV)', data: emgData, borderColor: 'red', backgroundColor: 'rgba(255,0,0,0.08)', tension: 0.3 }] },
-            options: { animation: false, responsive: true, maintainAspectRatio: false }
-        });
 
         // ======= Socket (datos en tiempo real) =======
         socket.on("datos_mqtt", data => {
@@ -318,6 +252,7 @@
                 anguloSpan.textContent = (data.angulo ?? 0).toFixed(2) + " °";
                 emgSpan.textContent = (data.emg ?? 0).toFixed(2) + " mV";
 
+                // Historial Rápido
                 buffer.push({ tiempo: ahora, fuerza: data.fuerza ?? 0, angulo: data.angulo ?? 0, emg: data.emg ?? 0 });
                 if (buffer.length > 10) buffer.shift();
 
@@ -325,55 +260,55 @@
                 buffer.slice().reverse().forEach(m => {
                     historialBody.innerHTML += `<tr><td>${m.tiempo}</td><td>${m.fuerza.toFixed(2)}</td><td>${m.angulo.toFixed(2)}</td><td>${m.emg.toFixed(2)}</td></tr>`;
                 });
-
-                tiempoLabels.push(ahora);
-                fuerzaData.push(data.fuerza ?? 0);
-                anguloData.push(data.angulo ?? 0);
-                emgData.push(data.emg ?? 0);
-                if (tiempoLabels.length > 40) { tiempoLabels.shift(); fuerzaData.shift(); anguloData.shift(); emgData.shift(); }
-
-                graficoFuerza.update();
-                graficoAngulo.update();
-                graficoEMG.update();
             } catch (e) {
                 console.error("Error procesando datos MQTT:", e);
             }
         });
 
-        // ======= Relé =======
-        btnRelay.addEventListener('click', () => {
-            relayEncendido = !relayEncendido;
-            fetch('/api/rele', {
+        // ======= Actuadores (Nueva Lógica) =======
+
+        // Función genérica para alternar actuadores
+        window.toggleActuador = function (actuadorKey) {
+            const act = actuadores[actuadorKey];
+            if (!act) return;
+
+            act.estado = !act.estado;
+
+            fetch(`/api/actuador/${actuadorKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: relayEncendido })
+                body: JSON.stringify({ estado: act.estado })
             }).then(res => res.text())
                 .then(() => {
-                    btnRelay.innerHTML = relayEncendido ? '<i class="fa fa-power-off me-2"></i> Apagar Relé' : '<i class="fa fa-plug me-2"></i> Encender Relé';
-                    btnRelay.classList.toggle('btn-success', relayEncendido);
-                    btnRelay.classList.toggle('btn-warning', !relayEncendido);
+                    const estadoTexto = act.estado ? 'ON' : 'OFF';
+                    act.btn.innerHTML = `<i class="${actuadorKey === 'relay' ? 'fa fa-plug' : 'fa fa-cogs'} me-2"></i> ${actuadorKey.replace('motor', 'Motor ')}: ${estadoTexto}`;
+                    act.btn.classList.toggle('btn-success', act.estado);
+                    act.btn.classList.toggle('btn-warning', !act.estado);
                 }).catch(err => {
-                    console.error("Error relé:", err);
-                    alert('Error comunicándose con el relé');
+                    console.error(`Error actuador ${actuadorKey}:`, err);
+                    alert(`Error comunicándose con el actuador ${actuadorKey}`);
+                    act.estado = !act.estado; // Revertir el estado local
                 });
-        });
+        };
 
-        // ======= Calibración =======
-        window.aplicarCalibracion = function () {
-            const offsetF = parseFloat(document.getElementById('calFuerza').value) || 0;
-            const offsetA = parseFloat(document.getElementById('calAngulo').value) || 0;
-            const offsetE = parseFloat(document.getElementById('calEMG').value) || 0;
-            fetch('/api/calibracion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ offsetF, offsetA, offsetE })
-            }).then(res => res.text())
-                .then(msg => alert(msg))
-                .catch(err => { console.error("Error calibración:", err); alert('Error al aplicar calibración'); });
-        }
+        // Asignar el listener a los botones de actuadores
+        document.getElementById("actuadoresContainer").addEventListener('click', (event) => {
+            const btn = event.target.closest('.btn-actuador');
+            if (btn) {
+                const actuadorKey = btn.getAttribute('data-actuador');
+                toggleActuador(actuadorKey);
+            }
+        });
 
 
         // ======= Reportes (funciones de manejo) =======
+        function obtenerBadgeEstado(estado) {
+            const estadoStr = String(estado).toLowerCase();
+            if (estadoStr === 'corregido' || estadoStr === 'solucionado') return '<span class="badge bg-success">✅ Corregido</span>';
+            if (estadoStr === 'en_proceso') return '<span class="badge bg-warning text-dark">⏳ En Proceso</span>';
+            return '<span class="badge bg-danger">⚠️ Pendiente</span>'; // Por defecto, es pendiente
+        }
+
         async function cargarReportes() {
             try {
                 const res = await fetch('/api/reportes', { cache: 'no-store' });
@@ -394,7 +329,7 @@
 
         function renderPendientes() {
             const tbody = document.querySelector("#tablaPendientes tbody");
-            const pendientes = reportes.filter(r => String(r.estado).toLowerCase() === "pendiente");
+            const pendientes = reportes.filter(r => String(r.estado).toLowerCase() === "pendiente" || String(r.estado).toLowerCase() === "en_proceso");
             tbody.innerHTML = "";
             if (pendientes.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No hay reportes pendientes</td></tr>';
@@ -403,25 +338,25 @@
 
             pendientes.forEach(r => {
                 tbody.innerHTML += `
-        <tr>
-          <td>${r.id}</td>
-          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-          <td>${r.usuario_emisor ?? ''}</td>
-          <td>${r.tipo ?? ''}</td>
-          <td>${r.dispositivo ?? ''}</td>
-          <td><span class="badge bg-danger text-white">⚠️ Pendiente</span></td>
-          <td>
-            <button class="btn btn-sm btn-info fw-semibold" onclick="abrirCorregir(${r.id})">
-                <i class="fa fa-pencil me-1"></i> Responder
-            </button>
-          </td>
-        </tr>`;
+        <tr onclick="abrirCorregir(${r.id})" style="cursor: pointer;">
+          <td>${r.id}</td>
+          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+          <td>${r.usuario_emisor ?? ''}</td>
+          <td>${r.tipo ?? ''}</td>
+          <td>${r.dispositivo ?? ''}</td>
+          <td>${obtenerBadgeEstado(r.estado)}</td>
+          <td>
+            <button class="btn btn-sm btn-info fw-semibold" onclick="event.stopPropagation(); abrirCorregir(${r.id})">
+                <i class="fa fa-pencil me-1"></i> Responder
+            </button>
+          </td>
+        </tr>`;
             });
         }
 
         function renderHistorial() {
             const tbody = document.querySelector("#tablaHistorial tbody");
-            const corregidos = reportes.filter(r => String(r.estado).toLowerCase() !== "pendiente");
+            const corregidos = reportes.filter(r => String(r.estado).toLowerCase() === "corregido" || String(r.estado).toLowerCase() === "solucionado");
 
             document.getElementById("infoContadorHist").textContent = `${corregidos.length} resultados`;
             tbody.innerHTML = "";
@@ -431,26 +366,25 @@
             }
 
             corregidos.forEach(r => {
-                const badgeClass = String(r.estado).toLowerCase() === 'pendiente' ? 'bg-warning text-dark' : 'bg-success';
                 tbody.innerHTML += `
-        <tr>
-          <td>${r.id}</td>
-          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-          <td>${r.usuario_emisor ?? ''}</td>
-          <td>${r.rol_emisor ?? ''}</td>
-          <td>${r.tipo ?? ''}</td>
-          <td>${r.dispositivo ?? ''}</td>
-          <td><span class="badge ${badgeClass}">${r.estado}</span></td>
-          <td>
-            <button class="btn btn-sm btn-outline-info" onclick="verReporte(${r.id})">
-                <i class="fa fa-eye"></i> Ver
-            </button>
-          </td>
-        </tr>`;
+        <tr onclick="verReporte(${r.id})" style="cursor: pointer;">
+          <td>${r.id}</td>
+          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+          <td>${r.usuario_emisor ?? ''}</td>
+          <td>${r.rol_emisor ?? ''}</td>
+          <td>${r.tipo ?? ''}</td>
+          <td>${r.dispositivo ?? ''}</td>
+          <td>${obtenerBadgeEstado(r.estado)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); verReporte(${r.id})">
+                <i class="fa fa-eye"></i> Ver
+            </button>
+          </td>
+        </tr>`;
             });
         }
 
-        // ======= Modal (funciones hechas globales) - Usan jQuery para control del modal =======
+        // ======= Modal (funciones) =======
         window.verReporte = function (id) {
             seleccionado = reportes.find(r => Number(r.id) === Number(id));
             if (!seleccionado) return alert("Reporte no encontrado en memoria");
@@ -458,13 +392,13 @@
             modalTitulo.textContent = `Reporte de Falla #${seleccionado.id}`;
             chipId.textContent = `ID: ${seleccionado.id}`;
             chipFecha.textContent = `Creado: ${new Date(seleccionado.fecha_creacion).toLocaleString()}`;
-            chipEstado.textContent = `Estado: ${seleccionado.estado ?? ''}`;
+            chipEstado.innerHTML = obtenerBadgeEstado(seleccionado.estado);
             chipTipo.textContent = `Tipo: ${seleccionado.tipo ?? ''}`;
             chipDispositivo.textContent = `Dispositivo: ${seleccionado.dispositivo ?? ''}`;
             detalleDescripcion.textContent = seleccionado.descripcion ?? "(Sin descripción)";
             detalleRespuesta.value = seleccionado.respuesta ?? "";
 
-            const isCorregido = String(seleccionado.estado).toLowerCase() !== 'pendiente';
+            const isCorregido = String(seleccionado.estado).toLowerCase() === 'corregido' || String(seleccionado.estado).toLowerCase() === 'solucionado';
 
             btnMarcarCorregido.disabled = isCorregido;
             btnMarcarCorregido.textContent = isCorregido ? "✅ Reporte Corregido" : "Guardar respuesta y corregir";
@@ -477,7 +411,7 @@
         window.abrirCorregir = function (id) {
             verReporte(id);
             // Enfocar el textarea si es un reporte pendiente
-            if (seleccionado && String(seleccionado.estado).toLowerCase() === 'pendiente') {
+            if (seleccionado && (String(seleccionado.estado).toLowerCase() === 'pendiente' || String(seleccionado.estado).toLowerCase() === 'en_proceso')) {
                 setTimeout(() => detalleRespuesta.focus(), 300);
             }
         };
@@ -525,11 +459,9 @@
                 .then(sessionData => {
                     const userRol = (sessionData.rol || "").trim().toUpperCase();
 
-                    // Asegurar que solo el rol de Servicio Técnico pueda acceder
                     if (userRol === "SERVICIO_TECNICO") {
                         cargarReportes();
-                        const btnRefrescarHist = document.getElementById("btnRefrescarHist");
-                        if (btnRefrescarHist) btnRefrescarHist.addEventListener("click", cargarReportes);
+                        // Inicializar el estado de los actuadores si fuera necesario
                     } else {
                         alert("Acceso denegado. Tu rol no es Servicio Técnico.");
                         window.location.href = "/login_rol.html";
@@ -542,7 +474,6 @@
                 });
         }
 
-        // Carga segura: Ejecuta la inicialización solo cuando el HTML está listo
         document.addEventListener('DOMContentLoaded', initDashboard);
 
     </script>
