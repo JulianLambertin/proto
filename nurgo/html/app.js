@@ -132,21 +132,33 @@ app.get("/mediciones.html", (req, res) =>
 // ------------------- LOGIN PACIENTE -------------------
 app.post("/login-paciente", (req, res) => {
   const { email, password } = req.body;
-  const sql = "SELECT * FROM pacientes WHERE email = ? AND password = ?";
-  db.query(sql, [email, password], (err, results) => {
+
+  const sql = "SELECT * FROM pacientes WHERE email = ?";
+  db.query(sql, [email], async (err, results) => {
     if (err) return res.redirect("/medicine.html?error=db");
-    if (results.length > 0) {
-      const paciente = results[0];
-      req.session.userId = paciente.id;
-      req.session.nombre = paciente.nombre;
-      req.session.email = paciente.email;
-      req.session.tipo = "PACIENTE";
-      res.redirect("/health.html");
-    } else {
-      res.redirect("/medicine.html?error=credenciales");
-    }
+    if (results.length === 0)
+      return res.redirect("/medicine.html?error=credenciales");
+
+    const paciente = results[0];
+
+    // ✅ Comparar contraseña hasheada
+    const passwordCorrecta = await bcrypt.compare(password, paciente.password);
+
+    if (!passwordCorrecta)
+      return res.redirect("/medicine.html?error=credenciales");
+
+    // ✅ Guardar sesión
+    req.session.user = {
+      id: paciente.id_paciente,
+      nombre: paciente.nombre,
+      email: paciente.email,
+      rol: "PACIENTE"
+    };
+
+    return res.redirect("/health.html");
   });
 });
+
 // ------------------- LOGIN ROLES -------------------
 app.post("/login-rol", (req, res) => {
   const { email, password } = req.body;

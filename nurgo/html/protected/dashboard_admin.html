@@ -11,10 +11,9 @@
   <script src="/js/jquery.min.js"></script>
   <script src="/js/bootstrap.bundle.min.js"></script>
   <style>
-    /* 💡 ESTILO CORREGIDO */
+    /* Estilos base */
     body {
       background-color: #f4f6f8;
-      /* Compensación para la navbar fixed-top. Ajusta este valor si es necesario. */
       padding-top: 80px;
     }
 
@@ -76,6 +75,22 @@
           <i class="fa fa-plus me-2"></i> Crear Nuevo Usuario
         </button>
       </div>
+
+      <div class="row mb-4">
+        <div class="col-md-8">
+          <input type="text" id="searchInput" class="form-control" placeholder="Buscar por Nombre, Email o Usuario..."
+            onkeyup="filtrarUsuarios()">
+        </div>
+        <div class="col-md-4">
+          <select id="rolFilter" class="form-select" onchange="filtrarUsuarios()">
+            <option value="">Todos los Roles</option>
+            <option value="ADMIN">Administrador</option>
+            <option value="PROFESIONAL">Profesional</option>
+            <option value="SERVICIO_TECNICO">Servicio Técnico</option>
+            <option value="PACIENTE">Paciente (General)</option>
+          </select>
+        </div>
+      </div>
       <div class="table-responsive">
         <table class="table table-hover" id="tablaUsuarios">
           <thead>
@@ -96,7 +111,6 @@
     </div>
 
     <hr class="my-5">
-
     <div class="card bg-white">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="text-info fw-bold"><i class="fa fa-history me-2"></i> Historial Completo de Reportes</h4>
@@ -125,7 +139,6 @@
       <small id="infoContadorReportes" class="text-muted">0 reportes en historial</small>
     </div>
   </div>
-
   <div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -162,6 +175,7 @@
                 <option value="ADMIN">Administrador</option>
                 <option value="SERVICIO_TECNICO">Servicio Técnico</option>
                 <option value="PROFESIONAL">Profesional</option>
+                <option value="PACIENTE">Paciente</option>
               </select>
             </div>
           </div>
@@ -208,7 +222,6 @@
       </div>
     </div>
   </div>
-
   <script>
     // Variables globales
     let usuarios = [];
@@ -220,8 +233,7 @@
     const userIdInput = document.getElementById("userId");
     const passwordInput = document.getElementById("password");
     const passwordHint = document.getElementById("passwordHint");
-    // 💡 Variable para el ID del usuario logueado (necesario para la auto-eliminación)
-    let userIdLogueado = null;
+    let userIdLogueado = null; // ID del usuario logueado para prevenir auto-eliminación
 
 
     // ======= Funciones Auxiliares =======
@@ -246,23 +258,49 @@
         const res = await fetch('/api/usuarios', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         usuarios = await res.json();
-        renderUsuarios();
+        // Al cargar, llamamos a filtrarUsuarios para que se muestren todos por defecto
+        filtrarUsuarios();
       } catch (err) {
         console.error("Error cargando usuarios:", err);
         tablaUsuariosBody.innerHTML = '<tr><td colspan="6" class="text-danger">Error al cargar usuarios. Revisa el servidor.</td></tr>';
       }
     }
 
-    function renderUsuarios() {
+    // NUEVA FUNCIÓN: Filtrado en el cliente (instantáneo)
+    window.filtrarUsuarios = function () {
+      const busqueda = document.getElementById('searchInput').value.toLowerCase().trim();
+      const rolSeleccionado = document.getElementById('rolFilter').value.toUpperCase();
+
+      const usuariosFiltrados = usuarios.filter(user => {
+        const nombreCompleto = (user.nombre || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        const rol = (user.rol || '').toUpperCase();
+
+        // Filtro por texto (nombre o email)
+        const coincideTexto = nombreCompleto.includes(busqueda) ||
+          email.includes(busqueda);
+
+        // Filtro por rol
+        const coincideRol = rolSeleccionado === '' || rol === rolSeleccionado;
+
+        return coincideTexto && coincideRol;
+      });
+
+      // Renderizar solo los usuarios filtrados
+      renderUsuarios(usuariosFiltrados);
+    }
+
+
+    // Función de renderizado modificada para aceptar la lista a mostrar
+    function renderUsuarios(listaUsuariosAMostrar = usuarios) {
       tablaUsuariosBody.innerHTML = "";
-      if (usuarios.length === 0) {
-        tablaUsuariosBody.innerHTML = '<tr><td colspan="6" class="text-muted">No hay usuarios registrados.</td></tr>';
-        document.getElementById("infoContadorUsuarios").textContent = "0 usuarios registrados";
+      if (listaUsuariosAMostrar.length === 0) {
+        tablaUsuariosBody.innerHTML = '<tr><td colspan="6" class="text-muted">No se encontraron usuarios con esos filtros.</td></tr>';
+        document.getElementById("infoContadorUsuarios").textContent = `${listaUsuariosAMostrar.length} usuarios encontrados (Total: ${usuarios.length})`;
         return;
       }
 
-      usuarios.forEach(user => {
-        // 💡 Lógica para evitar que el ADMIN se elimine a sí mismo
+      listaUsuariosAMostrar.forEach(user => {
         const isSelf = Number(user.id) === Number(userIdLogueado);
         const deleteButton = isSelf
           ? '<button class="btn btn-sm btn-danger" disabled title="No puedes eliminar tu propia cuenta"><i class="fa fa-trash-o"></i> Eliminar</button>'
@@ -270,23 +308,27 @@
                             <i class="fa fa-trash-o"></i> Eliminar
                        </button>`;
 
-        // 💡 Usamos user.email (como login) y user.nombre (como nombre completo)
         tablaUsuariosBody.innerHTML += `
-                    <tr>
-                        <td>${user.id}</td>
-                        <td>${user.email}</td> <td>${user.nombre ?? 'N/A'}</td> <td><span class="badge bg-primary">${user.rol}</span></td>
-                        <td>${user.email ?? 'N/A'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-info me-2" onclick="abrirModalEditar(${user.id})">
-                                <i class="fa fa-pencil"></i> Editar
-                            </button>
-                            ${deleteButton}
-                        </td>
-                    </tr>
-                `;
+                            <tr>
+                                <td>${user.id}</td>
+                                <td>${user.email}</td> 
+                                <td>${user.nombre ?? 'N/A'}</td> 
+                                <td><span class="badge bg-primary">${user.rol}</span></td>
+                                <td>${user.email ?? 'N/A'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info me-2" onclick="abrirModalEditar(${user.id})">
+                                        <i class="fa fa-pencil"></i> Editar
+                                    </button>
+                                    ${deleteButton}
+                                </td>
+                            </tr>
+                        `;
       });
-      document.getElementById("infoContadorUsuarios").textContent = `${usuarios.length} usuarios registrados`;
+      document.getElementById("infoContadorUsuarios").textContent = `${listaUsuariosAMostrar.length} usuarios encontrados (Total: ${usuarios.length})`;
     }
+
+    // ... (el resto de las funciones abrirModalCrear, abrirModalEditar, 
+    // formUsuario.addEventListener y eliminarUsuario no han cambiado) ...
 
     window.abrirModalCrear = function () {
       modalUserTitulo.textContent = "Crear Nuevo Usuario";
@@ -301,15 +343,13 @@
       const user = usuarios.find(u => Number(u.id) === Number(id));
       if (!user) { alert("Usuario no encontrado."); return; }
 
-      // 💡 Usamos user.nombre y user.email
       modalUserTitulo.textContent = `Editar Usuario: ${user.nombre}`;
       userIdInput.value = user.id;
-      document.getElementById('username').value = user.email; // Usamos email para el campo de login/usuario
-      document.getElementById('fullname').value = user.nombre; // Usamos nombre
+      document.getElementById('username').value = user.email;
+      document.getElementById('fullname').value = user.nombre;
       document.getElementById('email').value = user.email;
       document.getElementById('rol').value = user.rol;
 
-      // Contraseña: Opcional al editar
       passwordInput.value = "";
       passwordInput.required = false;
       passwordHint.style.display = 'block';
@@ -326,11 +366,9 @@
       const formData = new FormData(formUsuario);
       const data = Object.fromEntries(formData.entries());
 
-      // Eliminar la contraseña si está vacía y estamos editando
       if (method === 'PUT' && !data.password) {
         delete data.password;
       }
-      // Eliminar el ID para el cuerpo de la petición
       delete data.id;
 
       try {
@@ -381,6 +419,7 @@
       }
     }
 
+
     // ======= Historial de Reportes =======
 
     async function cargarReportes() {
@@ -405,21 +444,21 @@
 
       reportes.forEach(r => {
         tablaReportesBody.innerHTML += `
-                    <tr onclick="verReporte(${r.id})">
-                        <td>${r.id}</td>
-                        <td>${formatearFecha(r.fecha_creacion)}</td>
-                        <td>${r.usuario_emisor ?? 'N/A'}</td>
-                        <td>${r.rol_emisor ?? 'N/A'}</td>
-                        <td>${r.tipo ?? 'N/A'}</td>
-                        <td>${r.dispositivo ?? 'N/A'}</td>
-                        <td>${obtenerBadgeEstado(r.estado)}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); verReporte(${r.id})">
-                                <i class="fa fa-eye"></i> Ver
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                            <tr onclick="verReporte(${r.id})">
+                                <td>${r.id}</td>
+                                <td>${formatearFecha(r.fecha_creacion)}</td>
+                                <td>${r.usuario_emisor ?? 'N/A'}</td>
+                                <td>${r.rol_emisor ?? 'N/A'}</td>
+                                <td>${r.tipo ?? 'N/A'}</td>
+                                <td>${r.dispositivo ?? 'N/A'}</td>
+                                <td>${obtenerBadgeEstado(r.estado)}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); verReporte(${r.id})">
+                                        <i class="fa fa-eye"></i> Ver
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
       });
       document.getElementById("infoContadorReportes").textContent = `${reportes.length} reportes en historial`;
     }
@@ -438,7 +477,6 @@
       document.getElementById('chipReporteDispositivo').textContent = `Dispositivo: ${reporte.dispositivo ?? 'N/A'}`;
       document.getElementById('detalleReporteDescripcion').textContent = reporte.descripcion ?? "(Sin descripción)";
 
-      // Mostrar u ocultar la respuesta del técnico
       const respuestaContainer = document.getElementById('respuestaContainer');
       const respuestaElement = document.getElementById('detalleReporteRespuesta');
       if (reporte.respuesta) {
@@ -462,10 +500,8 @@
         })
         .then(sessionData => {
           const userRol = (sessionData.rol || "").trim().toUpperCase();
-          // 💡 Capturamos el ID del usuario logueado
           userIdLogueado = sessionData.id_usuario;
 
-          // Asegurar que solo el rol de Administrador pueda acceder
           if (userRol === "ADMIN") {
             cargarUsuarios();
             cargarReportes();
