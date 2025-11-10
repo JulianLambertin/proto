@@ -206,7 +206,6 @@ app.get("/api/usuarios", verifyToken(["ADMIN", "PROFESIONAL"]), (req, res) => {
   );
 });
 // ------------------- API REPORTES -------------------
-// ------------------- API REPORTES -------------------
 app.get("/api/reportes", verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"]),
   (req, res) => {
     const rol = req.session.user.rol.trim().toUpperCase();
