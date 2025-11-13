@@ -27,7 +27,6 @@
       body {
          padding-top: 80px;
          margin: 0;
-         /* ya lo tienes, esto está bien */
       }
 
       /* 1. ESTILO DEL NAVBAR RESTAURADO Y FIJO */
@@ -106,7 +105,6 @@
             max-width: 100%;
          }
       }
-      
    </style>
 </head>
 
@@ -155,14 +153,17 @@
             <button id="btnIniciar" class="btn btn-primary fw-bold"><i class="fa fa-play me-1"></i> Iniciar</button>
             <button id="btnPausar" class="btn btn-secondary fw-bold" disabled><i class="fa fa-pause me-1"></i>
                Pausar</button>
-            <button id="btnDetener" class="btn btn-danger fw-bold" disabled><i class="fa fa-stop me-1"></i> Detener y
+            <button id="btnDetener" class="btn btn-danger fw-bold" disabled><i class="fa fa-stop me-1"></i> Detener
+               y
                Limpiar</button>
 
-            <button id="btnGuardar" class="btn btn-success fw-bold" disabled><i class="fa fa-save me-1"></i> Guardar (25
+            <button id="btnGuardar" class="btn btn-success fw-bold" disabled><i class="fa fa-save me-1"></i> Guardar
+               (Últimas
                Mediciones)</button>
             <button id="btnDescargar" class="btn btn-info fw-bold" data-toggle="modal" data-target="#modalDescarga"
                disabled><i class="fa fa-download me-1"></i> Descargar Gráfico</button>
-            <a href="/mediciones.html" class="btn btn-dark fw-bold"><i class="fa fa-list me-1"></i> Ver Historial</a>
+            <a href="#" id="enlaceHistorial" class="btn btn-dark fw-bold" style="display:none;"><i
+                  class="fa fa-list me-1"></i> Ver Historial</a>
          </div>
       </div>
    </div>
@@ -205,6 +206,8 @@
       let medicionActiva = false;
       let pausado = false;
 
+      let pacienteIdGlobal = null; // Almacenará el ID del paciente logueado
+
       // --- Referencias DOM ---
       const fuerzaSpan = document.getElementById("fuerzaValor");
       const anguloSpan = document.getElementById("anguloValor");
@@ -215,6 +218,8 @@
       const btnDetener = document.getElementById("btnDetener");
       const btnGuardar = document.getElementById("btnGuardar");
       const btnDescargar = document.getElementById("btnDescargar");
+      const enlaceHistorial = document.getElementById("enlaceHistorial");
+
 
       // --- Inicialización de Gráficos ---
       function crearGrafico(id, label, dataArray, color, yMin, yMax) {
@@ -277,7 +282,7 @@
 
             // 1. Almacenar en buffer para guardado (últimas 25)
             bufferMediciones.push({
-               tiempo: new Date().toISOString(),
+               // Es importante usar la hora actual de recepción para la DB
                fuerza: data.fuerza ?? 0,
                angulo: data.angulo ?? 0,
                emg: data.emg ?? 0
@@ -357,13 +362,20 @@
             alert('No hay mediciones para guardar. Inicia una terapia primero.');
             return;
          }
+         if (!pacienteIdGlobal) {
+            alert('Error: No se ha podido identificar al paciente. Reintente loguearse.');
+            return;
+         }
 
-         const datosAGuardar = bufferMediciones.slice(0, MAX_GUARDAR_PUNTOS);
+         const datosAGuardar = bufferMediciones.slice(); // Copia el buffer
 
          fetch('/api/guardar-mediciones', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mediciones: datosAGuardar })
+            body: JSON.stringify({
+               paciente_id: pacienteIdGlobal,
+               mediciones: datosAGuardar
+            })
          })
             .then(res => {
                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -371,7 +383,7 @@
             })
             .then(response => {
                alert(`✅ Guardado Exitoso: Se guardaron ${datosAGuardar.length} mediciones. Mensaje: ${response.message}`);
-               bufferMediciones.length = 0;
+               bufferMediciones.length = 0; // Limpia el buffer después de guardar
                btnGuardar.disabled = true;
             })
             .catch(err => {
@@ -385,7 +397,6 @@
          const dataURL = canvas.toDataURL("image/png");
 
          const a = document.createElement('a');
-         // Intentar obtener el título del gráfico desde la configuración de Chart.js
          let titulo = "Gráfico";
          const chart = todosLosGraficos.find(g => g.canvas.id === canvasId);
          if (chart) {
@@ -404,7 +415,11 @@
 
       // --- Lógica de Inicialización (Verificación de Sesión y Paciente) ---
       function initDashboard() {
-         fetch("/session")
+         const fetchNoCache = (url, options = {}) => {
+            return fetch(url, { ...options, cache: "no-store" });
+         };
+
+         fetchNoCache("/session")
             .then(res => {
                if (!res.ok) throw new Error("Sesión inválida");
                return res.json();
@@ -412,15 +427,31 @@
             .then(sessionData => {
                console.log(`Sesión verificada. Rol: ${sessionData.rol}`);
 
-               // Lee la clave 'paciente_nombre' (que debe ser enviada por tu backend)
-               const nombrePaciente = sessionData.paciente_nombre || sessionData.nombre || "Paciente No Asignado";
+               // 1. Mostrar nombre
+               const nombrePaciente = sessionData.nombre || "Paciente No Asignado";
                nombrePacienteElement.textContent = nombrePaciente;
+
+               // 2. CLAVE: Inyectar ID del paciente logueado en el enlace
+               const pacienteId = sessionData.id_usuario;
+               pacienteIdGlobal = pacienteId; // Guarda el ID globalmente para el botón 'Guardar'
+
+               // Verificamos si es un paciente logueado (rol PACIENTE)
+               if (sessionData.rol && sessionData.rol.toUpperCase() === 'PACIENTE' && pacienteId) {
+                  // El enlace del historial ya tiene el ID corregido
+                  enlaceHistorial.href = `/mediciones.html?paciente_id=${pacienteId}`;
+                  enlaceHistorial.style.display = 'inline-block'; // Muestra el botón corregido
+               } else {
+                  // Si no es un paciente, lo ocultamos
+                  enlaceHistorial.style.display = 'none';
+                  console.error("Usuario no es paciente o ID faltante. Historial de paciente oculto.");
+               }
             })
             .catch(error => {
                console.error("Error en verificación de sesión:", error);
                alert("Acceso denegado o sesión expirada. Por favor, inicia sesión.");
                nombrePacienteElement.textContent = "Error de Sesión";
-               window.location.href = "/login_rol.html";
+               // Redirige al login del paciente
+               window.location.href = "/medicine.html";
             });
       }
 

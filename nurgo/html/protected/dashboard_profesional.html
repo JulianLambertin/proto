@@ -40,28 +40,28 @@
 
 <body class="bg-light">
 
- <nav class="navbar navbar-dark bg-dark shadow-sm fixed-top">
-  <div class="container-fluid container d-flex justify-content-between align-items-center">
-    <h2 class="navbar-brand m-0 text-success fw-bold">Dashboard Profesional</h2>
-    <div class="d-flex gap-2">
-      <a href="/index.html" class="btn btn-info text-white fw-semibold px-4 mx-2"
-        style="border-radius: 30px; transition: 0.3s;">
-        <i class="fa fa-home me-2"></i> Inicio
-      </a>
-      <a href="/medicine.html" class="btn btn-info text-white fw-semibold px-4 mx-2"
-        style="border-radius: 30px; transition: 0.3s;">
-        <i class="fa fa-line-chart me-2"></i> Logear con Paciente
-      </a>
-      <a href="/logout" class="btn btn-outline-light fw-semibold px-4 mx-2"
-        style="border-radius: 30px; transition: 0.3s;">
-        <i class="fa fa-sign-out me-2"></i> Cerrar sesión
-      </a>
+  <nav class="navbar navbar-dark bg-dark shadow-sm fixed-top">
+    <div class="container-fluid container d-flex justify-content-between align-items-center">
+      <h2 class="navbar-brand m-0 text-success fw-bold">Dashboard Profesional</h2>
+      <div class="d-flex gap-2">
+        <a href="/index.html" class="btn btn-info text-white fw-semibold px-4 mx-2"
+          style="border-radius: 30px; transition: 0.3s;">
+          <i class="fa fa-home me-2"></i> Inicio
+        </a>
+        <a href="/medicine.html" class="btn btn-info text-white fw-semibold px-4 mx-2"
+          style="border-radius: 30px; transition: 0.3s;">
+          <i class="fa fa-line-chart me-2"></i> Logear con Paciente
+        </a>
+        <a href="/logout" class="btn btn-outline-light fw-semibold px-4 mx-2"
+          style="border-radius: 30px; transition: 0.3s;">
+          <i class="fa fa-sign-out me-2"></i> Cerrar sesión
+        </a>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
 
-  <section class="container mt-5">
+  <section class="container pt-5 mt-5">
     <h2 class="text-center mt-5 mb-4">Gestión de Reportes</h2>
 
     <div class="card mb-4">
@@ -97,7 +97,8 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-success"><i class="fa fa-send me-1"></i> Guardar Reporte</button>
+          <button type="submit" class="btn btn-success"><i class="fa fa-send me-1"></i> Guardar
+            Reporte</button>
         </form>
       </div>
     </div>
@@ -142,7 +143,8 @@
               <input type="password" class="form-control" id="password" placeholder="Contraseña" required>
             </div>
           </div>
-          <button type="submit" class="btn btn-success"><i class="fa fa-plus me-1"></i> Agregar Paciente</button>
+          <button type="submit" class="btn btn-success"><i class="fa fa-plus me-1"></i> Agregar
+            Paciente</button>
         </form>
       </div>
     </div>
@@ -166,12 +168,15 @@
   </section>
 
   <script>
+    // Función auxiliar para forzar la no-cache
+    const fetchNoCache = (url, options = {}) => {
+      return fetch(url, { ...options, cache: "no-store" });
+    };
+
     // Sesión y logout
     $(document).ready(function () {
-      $("#logoutBtn").click(() => { window.location.href = "/logout"; });
-
       // Verificación de sesión para asegurar que es un Profesional
-      fetch("/session")
+      fetchNoCache("/session")
         .then(res => {
           if (!res.ok) throw new Error("Sesión inválida");
           return res.json();
@@ -182,6 +187,9 @@
             alert("Acceso denegado. Tu rol no es Profesional.");
             window.location.href = "/login_rol.html";
           }
+          // Si todo es correcto, cargamos los datos
+          cargarPacientes();
+          cargarReportes();
         })
         .catch(error => {
           console.error("Error en verificación de sesión:", error);
@@ -191,130 +199,173 @@
     });
 
     // CRUD Pacientes
-    $(document).ready(function () {
-      const tabla = $("#tablaPacientes tbody");
+    const tablaPacientesBody = $("#tablaPacientes tbody");
 
-      async function cargarPacientes() {
+    async function cargarPacientes() {
+      try {
+        const res = await fetchNoCache("/api/pacientes");
+        if (!res.ok) throw new Error(`Error ${res.status} al cargar pacientes`);
+        const data = await res.json();
+        tablaPacientesBody.empty();
+        if (data.length === 0) {
+          tablaPacientesBody.append('<tr><td colspan="4" class="text-center">No hay pacientes asignados.</td></tr>');
+          return;
+        }
+        data.forEach(p => {
+          tablaPacientesBody.append(`
+                        <tr>
+                            <td>${p.id_paciente}</td>
+                            <td>${p.nombre}</td>
+                            <td>${p.email}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info me-1 historialBtn" data-id="${p.id_paciente}">
+                                    <i class="fa fa-line-chart"></i> Historial
+                                </button>
+                                <button class="btn btn-sm btn-primary me-1 editBtn" data-id="${p.id_paciente}">
+                                    <i class="fa fa-pencil"></i> Editar
+                                </button>
+                                <button class="btn btn-sm btn-danger deleteBtn" data-id="${p.id_paciente}">
+                                    <i class="fa fa-trash"></i> Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+        });
+      } catch (err) {
+        console.error(err);
+        tablaPacientesBody.html('<tr><td colspan="4" class="text-center text-danger">Error al cargar pacientes.</td></tr>');
+      }
+    }
+
+    $("#formPaciente").submit(async function (e) {
+      e.preventDefault();
+      const nombre = $("#nombre").val();
+      const email = $("#email").val();
+      const password = $("#password").val();
+      try {
+        const res = await fetch("/api/pacientes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre, email, password })
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          alert(`❌ Error al crear paciente: ${result.error || res.statusText}`);
+          throw new Error("Error al crear paciente");
+        }
+        alert(result.message);
+        $("#formPaciente")[0].reset();
+        cargarPacientes();
+      } catch (err) { console.error(err); }
+    });
+
+    tablaPacientesBody.on("click", ".deleteBtn", async function () {
+      const id = $(this).data("id");
+      if (confirm("¿Estás seguro de eliminar a este paciente? Esta acción es permanente.")) {
         try {
-          const res = await fetch("/api/pacientes");
-          const data = await res.json();
-          tabla.empty();
-          data.forEach(p => {
-            tabla.append(`
-                            <tr>
-                                <td>${p.id_paciente}</td>
-                                <td>${p.nombre}</td>
-                                <td>${p.email}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary me-1 editBtn" data-id="${p.id_paciente}">
-                                        <i class="fa fa-pencil"></i> Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-danger deleteBtn" data-id="${p.id_paciente}">
-                                        <i class="fa fa-trash"></i> Eliminar
-                                    </button>
-                                </td>
-                            </tr>
-                        `);
-          });
+          const res = await fetch(`/api/pacientes/${id}`, { method: "DELETE" });
+          const result = await res.json();
+          if (!res.ok) {
+            alert(`❌ Error al eliminar: ${result.error || res.statusText}`);
+            throw new Error("Error al eliminar");
+          }
+          cargarPacientes();
         } catch (err) { console.error(err); }
       }
+    });
 
-      $("#formPaciente").submit(async function (e) {
-        e.preventDefault();
-        const nombre = $("#nombre").val();
-        const email = $("#email").val();
-        const password = $("#password").val();
-        try {
-          const res = await fetch("/api/pacientes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nombre, email, password })
-          });
-          if (!res.ok) throw new Error("Error al crear paciente");
-          $("#formPaciente")[0].reset();
-          cargarPacientes();
-        } catch (err) { alert(err.message); }
-      });
+    tablaPacientesBody.on("click", ".editBtn", async function () {
+      const id = $(this).data("id");
+      const fila = $(this).closest("tr");
+      const nombre = fila.find("td:eq(1)").text();
+      const email = fila.find("td:eq(2)").text();
 
-      tabla.on("click", ".deleteBtn", async function () {
-        const id = $(this).data("id");
-        if (confirm("¿Eliminar paciente?")) {
-          await fetch(`/api/pacientes/${id}`, { method: "DELETE" });
-          cargarPacientes();
-        }
-      });
+      // Usamos prompt() para la edición rápida
+      const nuevoNombre = prompt("Nuevo nombre", nombre) || nombre;
+      const nuevoEmail = prompt("Nuevo email", email) || email;
+      const nuevaPass = prompt("Nueva contraseña (dejar en blanco si no desea cambiar)", "");
 
-      tabla.on("click", ".editBtn", async function () {
-        const id = $(this).data("id");
-        const fila = $(this).closest("tr");
-        const nombre = fila.find("td:eq(1)").text();
-        const email = fila.find("td:eq(2)").text();
-        const nuevoNombre = prompt("Nuevo nombre", nombre) || nombre;
-        const nuevoEmail = prompt("Nuevo email", email) || email;
-        const nuevaPass = prompt("Nueva contraseña (dejar en blanco si no cambia)", "");
-        await fetch(`/api/pacientes/${id}`, {
+      try {
+        const res = await fetch(`/api/pacientes/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nombre: nuevoNombre, email: nuevoEmail, password: nuevaPass })
         });
+        const result = await res.json();
+        if (!res.ok) {
+          alert(`❌ Error al actualizar: ${result.error || res.statusText}`);
+          throw new Error("Error al actualizar");
+        }
         cargarPacientes();
-      });
+      } catch (err) { console.error(err); }
+    });
 
-      cargarPacientes();
+    tablaPacientesBody.on("click", ".historialBtn", function () {
+      const id = $(this).data("id");
+      // Redirigir a mediciones.html con el ID del paciente en la URL
+      window.location.href = `/mediciones.html?paciente_id=${id}`;
     });
 
     // CRUD Reportes
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("formReporte");
-      const tabla = document.querySelector("#tablaReportes tbody");
+    const formReporte = document.getElementById("formReporte");
+    const tablaReportesBody = document.querySelector("#tablaReportes tbody");
 
-      async function cargarReportes() {
-        try {
-          const res = await fetch("/api/reportes");
-          const data = await res.json();
-          tabla.innerHTML = "";
-          data.forEach(r => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                            <td>${r.id}</td>
-                            <td>${r.tipo}</td>
-                            <td>${r.dispositivo}</td>
-                            <td>${r.descripcion}</td>
-                            <td><span class="badge bg-${r.estado === 'Pendiente' ? 'warning' : 'success'}">${r.estado}</span></td>
-                            <td>${r.respuesta || '-'}</td>
-                            <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-                            <td>${r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-'}</td>
-                        `;
-            tabla.appendChild(tr);
-          });
-        } catch (err) {
-          console.error(err);
-          tabla.innerHTML = "<tr><td colspan='8' class='text-center text-danger'>Error al cargar reportes</td></tr>";
+    async function cargarReportes() {
+      try {
+        const res = await fetchNoCache("/api/reportes");
+        if (!res.ok) throw new Error(`Error ${res.status} al cargar reportes`);
+        const data = await res.json();
+        tablaReportesBody.innerHTML = "";
+        if (data.length === 0) {
+          tablaReportesBody.innerHTML = "<tr><td colspan='8' class='text-center'>No has emitido reportes.</td></tr>";
+          return;
         }
+        data.forEach(r => {
+          const tr = document.createElement("tr");
+          const estadoClass = r.estado === 'Pendiente' ? 'warning' : 'success';
+          const fechaRespuesta = r.fecha_respuesta ? new Date(r.fecha_respuesta).toLocaleString() : '-';
+          const fechaCreacion = new Date(r.fecha_creacion).toLocaleString();
+
+          tr.innerHTML = `
+                        <td>${r.id}</td>
+                        <td>${r.tipo}</td>
+                        <td>${r.dispositivo}</td>
+                        <td>${r.descripcion}</td>
+                        <td><span class="badge bg-${estadoClass}">${r.estado}</span></td>
+                        <td>${r.respuesta || '-'}</td>
+                        <td>${fechaCreacion}</td>
+                        <td>${fechaRespuesta}</td>
+                    `;
+          tablaReportesBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tablaReportesBody.innerHTML = "<tr><td colspan='8' class='text-center text-danger'>Error al cargar reportes</td></tr>";
       }
+    }
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const tipo = document.getElementById("tipo").value;
-        const dispositivo = document.getElementById("dispositivo").value;
-        const descripcion = document.getElementById("descripcion").value;
-        try {
-          const res = await fetch("/api/reportes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tipo, dispositivo, descripcion })
-          });
-          if (!res.ok) throw new Error("Error al crear reporte");
-          alert("✅ Reporte creado correctamente");
-          form.reset();
-          cargarReportes();
-        } catch (err) {
-          alert("❌ No se pudo crear el reporte");
-          console.error(err);
+    formReporte.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const tipo = document.getElementById("tipo").value;
+      const dispositivo = document.getElementById("dispositivo").value;
+      const descripcion = document.getElementById("descripcion").value;
+      try {
+        const res = await fetch("/api/reportes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tipo, dispositivo, descripcion })
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          alert(`❌ No se pudo crear el reporte: ${result.error || res.statusText}`);
+          throw new Error("Error al crear reporte");
         }
-      });
-
-      cargarReportes();
+        alert("✅ Reporte creado correctamente");
+        formReporte.reset();
+        cargarReportes();
+      } catch (err) {
+        console.error(err);
+      }
     });
   </script>
 

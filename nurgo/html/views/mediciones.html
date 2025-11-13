@@ -3,23 +3,33 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Mediciones en Pacientes y Registros</title>
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <title>Historial de Mediciones - KneeCare</title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
     <style>
         body {
             background-color: #f7f7f7;
+            padding-top: 20px;
         }
- 
+
         .card {
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        #info-panel {
+            background-color: #e6f7ff;
+            border-left: 5px solid #007bff;
+        }
+
+        #info-panel h4 {
+            color: #007bff;
+            font-weight: 700;
         }
 
         .table thead {
-            background-color: #33ffe3;
+            background-color: #007bff;
             color: #fff;
         }
 
@@ -31,78 +41,186 @@
 
 <body>
     <div class="container mt-5">
-        <h2 class="mb-4">Dashboard Admin</h2>
-        <a href="/logout" class="btn btn-danger mb-3">🚪 Cerrar Sesión</a>
+        <h2 class="mb-4 text-center">📋 Historial de Terapia</h2>
 
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card p-3">
-                    <h4>Profesionales Registrados</h4>
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody id="profesionales-body"></tbody>
-                    </table>
+        <a id="volver-dashboard" href="#" class="btn btn-secondary mb-4 float-left" style="display:none;">
+            <i class="fa fa-arrow-left"></i> Volver
+        </a>
+        <a href="/logout" class="btn btn-danger mb-4 float-right">🚪 Cerrar Sesión</a>
+        <div class="clearfix"></div>
+
+        <div class="card p-4" id="info-panel">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4><i class="fa fa-wheelchair"></i> Usuario:</h4>
+                    <p id="usuario-rol" class="fw-bold">Cargando...</p>
+                </div>
+                <div class="col-md-6">
+                    <h4><i class="fa fa-calendar"></i> Fecha Actual:</h4>
+                    <p id="fecha-actual" class="fw-bold">Cargando...</p>
                 </div>
             </div>
+        </div>
 
-            <div class="col-md-4">
-                <div class="card p-3">
-                    <h4>Técnicos Registrados</h4>
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tecnicos-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card p-3">
-                    <h4>Pacientes Registrados</h4>
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pacientes-body"></tbody>
-                    </table>
-                </div>
+        <div class="card p-3">
+            <h3>📈 Historial Completo de Mediciones para: <span id="paciente-nombre" class="text-primary"></span></h3>
+            <p class="text-muted">Mediciones registradas (más recientes primero).</p>
+            <div style="max-height: 70vh; overflow-y: auto;">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID Med.</th>
+                            <th>Fuerza (N)</th>
+                            <th>Angulación (°)</th>
+                            <th>EMG (mV)</th>
+                            <th>Fecha y Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mediciones-paciente-body">
+                        <tr>
+                            <td colspan="5" class="text-center">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        // Profesionales
-        fetch('/api/profesionales').then(r => r.json()).then(data => {
-            const tbody = document.getElementById('profesionales-body'); tbody.innerHTML = '';
-            data.forEach(p => { tbody.innerHTML += `<tr><td>${p.id}</td><td>${p.nombre}</td><td>${p.email}</td></tr>`; });
-        });
+        const fetchNoCache = (url, options = {}) => {
+            return fetch(url, { ...options, cache: "no-store" });
+        };
 
-        // Técnicos
-        fetch('/api/tecnicos').then(r => r.json()).then(data => {
-            const tbody = document.getElementById('tecnicos-body'); tbody.innerHTML = '';
-            data.forEach(t => { tbody.innerHTML += `<tr><td>${t.id}</td><td>${t.nombre}</td><td>${t.email}</td></tr>`; });
-        });
+        // Función para obtener el nombre del paciente (Usada por el Profesional)
+        function cargarNombrePaciente(pacienteId, rol) {
+            const url = rol === 'PACIENTE' ? `/session` : `/api/pacientes/${pacienteId}/nombre`;
 
-        // Pacientes
-        fetch('/api/pacientes').then(r => r.json()).then(data => {
-            const tbody = document.getElementById('pacientes-body'); tbody.innerHTML = '';
-            data.forEach(p => { tbody.innerHTML += `<tr><td>${p.id}</td><td>${p.nombre}</td><td>${p.email}</td></tr>`; });
-        });
+            fetchNoCache(url)
+                .then(r => {
+                    if (!r.ok) throw new Error('Usuario o Paciente no encontrado/asignado');
+                    return r.json();
+                })
+                .then(data => {
+                    const nombre = rol === 'PACIENTE' ? data.nombre : data.nombre;
+                    document.getElementById('paciente-nombre').textContent = nombre || `ID: ${pacienteId} (Desconocido)`;
+                })
+                .catch(error => {
+                    console.error("Error al cargar nombre:", error);
+                    document.getElementById('paciente-nombre').textContent = `Error al cargar (ID: ${pacienteId})`;
+                });
+        }
+
+        // Función principal para cargar mediciones
+        function cargarMedicionesPaciente(pacienteId, rol) {
+            const tbody = document.getElementById('mediciones-paciente-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fa fa-spinner fa-spin"></i> Cargando mediciones...</td></tr>';
+
+            // Determinar la URL de la API según el rol
+            const apiUrl = rol === 'PACIENTE'
+                ? `/api/mediciones/mihistorial/${pacienteId}`
+                : `/api/mediciones/paciente/${pacienteId}`;
+
+            fetchNoCache(apiUrl)
+                .then(r => {
+                    if (!r.ok) {
+                        const errorMsg = r.status === 403
+                            ? `<b>Error 403:</b> No tienes permiso para ver este historial.`
+                            : `Error al cargar mediciones (Status: ${r.status}).`;
+
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${errorMsg}</td></tr>`;
+                        throw new Error(`Error ${r.status} al cargar mediciones`);
+                    }
+                    return r.json();
+                })
+                .then(mediciones => {
+                    tbody.innerHTML = '';
+                    if (mediciones.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center">No hay mediciones registradas para este usuario.</td></tr>`;
+                        return;
+                    }
+                    mediciones.forEach(m => {
+                        const fecha = new Date(m.fecha_medicion).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'medium' });
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${m.id_medicion}</td>
+                                <td>${(m.fuerza || 0).toFixed(2)}</td>
+                                <td>${(m.angulacion || 0).toFixed(2)}</td>
+                                <td>${(m.emg || 0).toFixed(2)}</td>
+                                <td>${fecha}</td>
+                            </tr>
+                        `;
+                    });
+                })
+                .catch(error => {
+                    console.error("Error cargando mediciones:", error);
+                });
+        }
+
+        function cargarInfoPanel() {
+            document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            fetchNoCache("/session")
+                .then(res => {
+                    if (!res.ok) window.location.href = "/login_rol.html";
+                    return res.json();
+                })
+                .then(sessionData => {
+                    const rol = sessionData.rol.toUpperCase();
+                    const sessionId = sessionData.id_usuario;
+                    const nombreUsuario = sessionData.nombre;
+
+                    // 1. Mostrar Rol y Nombre del usuario logueado
+                    document.getElementById('usuario-rol').textContent = `${nombreUsuario} (${rol})`;
+
+                    // 2. OBTENER EL ID DEL PACIENTE DESDE LA URL (CLAVE)
+                    const params = new URLSearchParams(window.location.search);
+                    const pacienteIdFromURL = params.get('paciente_id');
+
+                    const volverBtn = document.getElementById('volver-dashboard');
+
+                    if (pacienteIdFromURL) {
+                        // Flujo Profesional (ve el historial de un ID específico en la URL)
+                        if (rol === 'PROFESIONAL') {
+                            cargarNombrePaciente(pacienteIdFromURL, rol);
+                            cargarMedicionesPaciente(pacienteIdFromURL, rol);
+                            volverBtn.href = "/protected/dashboard_profesional.html";
+                            volverBtn.style.display = 'inline-block';
+                        }
+                        // Flujo Paciente (ve su propio historial, su ID debe coincidir con el de la URL)
+                        else if (rol === 'PACIENTE' && Number(pacienteIdFromURL) === Number(sessionId)) {
+                            cargarNombrePaciente(sessionId, rol); // Carga el nombre del logueado
+                            cargarMedicionesPaciente(sessionId, rol); // Carga su historial
+                            volverBtn.href = "/health.html";
+                            volverBtn.style.display = 'inline-block';
+                        }
+                        // Intento de acceso de otro rol o ID no coincidente
+                        else {
+                            document.getElementById('paciente-nombre').textContent = "Acceso Denegado";
+                            document.getElementById('mediciones-paciente-body').innerHTML =
+                                `<tr><td colspan="5" class="text-center text-danger">Acceso no autorizado o ID de paciente no corresponde a la sesión.</td></tr>`;
+                        }
+                    } else {
+                        // Mensaje de error si falta el ID
+                        document.getElementById('paciente-nombre').textContent = "ERROR: ID de paciente no especificado.";
+                        document.getElementById('mediciones-paciente-body').innerHTML =
+                            '<tr><td colspan="5" class="text-center text-danger">Debe incluir ?paciente_id=X en la URL para ver mediciones.</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error("Error de sesión o API:", err);
+                    document.getElementById('usuario-rol').textContent = "Sesión Expirada";
+                    window.location.href = "/login_rol.html";
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarInfoPanel);
     </script>
 </body>
 
