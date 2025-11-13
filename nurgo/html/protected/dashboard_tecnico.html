@@ -15,7 +15,6 @@
         body {
             background-color: #f4f6f8;
             padding-top: 80px;
-            /* Espacio para la barra de navegación fija */
         }
 
         .container {
@@ -35,7 +34,6 @@
             color: #007bff;
         }
 
-        /* Estilos para los 3 botones de actuadores */
         .btn-actuador {
             min-width: 150px;
             font-weight: 600;
@@ -83,8 +81,7 @@
     <div class="container">
 
         <div class="card bg-white">
-            <h4 class="mb-4 text-primary fw-bold"><i class="fa fa-tachometer me-2"></i> Val. Tiempo Real y Control
-            </h4>
+            <h4 class="mb-4 text-primary fw-bold"><i class="fa fa-tachometer me-2"></i> Val. Tiempo Real y Control</h4>
 
             <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center mb-4">
                 <div><span class="text-muted">Fuerza:</span> <span id="fuerzaValor" class="sensor-value text-success">--
@@ -102,10 +99,10 @@
                 <button id="btnRelay" class="btn btn-warning btn-actuador" data-actuador="relay">
                     <i class="fa fa-plug me-2"></i> Relé: OFF
                 </button>
-                <button id="btnBuzzer" class="btn btn-warning btn-actuador" data-actuador="motor1">
-                    <i class="fa fa-cogs me-2"></i> Buzzer: OFF
+                <button id="btnBuzzer" class="btn btn-warning btn-actuador" data-actuador="buzzer">
+                    <i class="fa fa-bullhorn me-2"></i> Buzzer: OFF
                 </button>
-                <button id="btnMotor" class="btn btn-warning btn-actuador" data-actuador="motor2">
+                <button id="btnMotor" class="btn btn-warning btn-actuador" data-actuador="motor">
                     <i class="fa fa-cogs me-2"></i> Motor: OFF
                 </button>
             </div>
@@ -113,6 +110,7 @@
         </div>
 
         <hr class="my-4">
+
         <div class="card bg-white">
             <h4 class="mb-3 text-danger fw-bold"><i class="fa fa-warning me-2"></i> Reportes pendientes de Corrección
             </h4>
@@ -214,8 +212,8 @@
             </div>
         </div>
     </div>
+
     <script>
-        // ======= Configuración inicial =======
         const socket = io();
         const fuerzaSpan = document.getElementById("fuerzaValor");
         const anguloSpan = document.getElementById("anguloValor");
@@ -224,15 +222,15 @@
 
         const actuadores = {
             'relay': { estado: false, btn: document.getElementById("btnRelay") },
-            'motor1': { estado: false, btn: document.getElementById("btnBuzzer") },
-            'motor2': { estado: false, btn: document.getElementById("btnMotor") }
+            'buzzer': { estado: false, btn: document.getElementById("btnBuzzer") },
+            'motor': { estado: false, btn: document.getElementById("btnMotor") }
         };
 
         const buffer = [];
         let reportes = [];
         let seleccionado = null;
 
-        // Referencias dentro del modal
+        // Modal referencias
         const modalTitulo = document.getElementById("modalTitulo");
         const chipId = document.getElementById("chipId");
         const chipFecha = document.getElementById("chipFecha");
@@ -243,8 +241,7 @@
         const detalleRespuesta = document.getElementById("detalleRespuesta");
         const btnMarcarCorregido = document.getElementById("btnMarcarCorregido");
 
-
-        // ======= Socket (datos en tiempo real) =======
+        // ===== Socket MQTT =====
         socket.on("datos_mqtt", data => {
             try {
                 const ahora = new Date().toLocaleTimeString();
@@ -252,7 +249,6 @@
                 anguloSpan.textContent = (data.angulo ?? 0).toFixed(2) + " °";
                 emgSpan.textContent = (data.emg ?? 0).toFixed(2) + " mV";
 
-                // Historial Rápido
                 buffer.push({ tiempo: ahora, fuerza: data.fuerza ?? 0, angulo: data.angulo ?? 0, emg: data.emg ?? 0 });
                 if (buffer.length > 10) buffer.shift();
 
@@ -265,63 +261,72 @@
             }
         });
 
-        // ======= Actuadores (Nueva Lógica) =======
+        // ===== Actuadores =====
+        async function inicializarActuadores() {
+            try {
+                const res = await fetch('/api/actuadores', { cache: 'no-store' });
+                const estados = await res.json();
+                for (const key in actuadores) {
+                    if (estados[key] !== undefined) {
+                        actuadores[key].estado = estados[key];
+                        actualizarBoton(key);
+                    }
+                }
+            } catch (e) { console.error("Error inicializando actuadores:", e); }
+        }
 
-        // Función genérica para alternar actuadores
-        window.toggleActuador = function (actuadorKey) {
+        function actualizarBoton(actuadorKey) {
+            const act = actuadores[actuadorKey];
+            const estadoTexto = act.estado ? 'ON' : 'OFF';
+            let iconClass = 'fa-cogs';
+            if (actuadorKey === 'relay') iconClass = 'fa fa-plug';
+            if (actuadorKey === 'buzzer') iconClass = 'fa fa-bullhorn';
+            act.btn.innerHTML = `<i class="${iconClass} me-2"></i> ${actuadorKey.replace('motor', 'Motor')}: ${estadoTexto}`;
+            act.btn.classList.toggle('btn-success', act.estado);
+            act.btn.classList.toggle('btn-warning', !act.estado);
+        }
+
+        async function toggleActuador(actuadorKey) {
             const act = actuadores[actuadorKey];
             if (!act) return;
-
-            act.estado = !act.estado;
-
-            fetch(`/api/actuador/${actuadorKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: act.estado })
-            }).then(res => res.text())
-                .then(() => {
-                    const estadoTexto = act.estado ? 'ON' : 'OFF';
-                    act.btn.innerHTML = `<i class="${actuadorKey === 'relay' ? 'fa fa-plug' : 'fa fa-cogs'} me-2"></i> ${actuadorKey.replace('motor', 'Motor ')}: ${estadoTexto}`;
-                    act.btn.classList.toggle('btn-success', act.estado);
-                    act.btn.classList.toggle('btn-warning', !act.estado);
-                }).catch(err => {
-                    console.error(`Error actuador ${actuadorKey}:`, err);
-                    alert(`Error comunicándose con el actuador ${actuadorKey}`);
-                    act.estado = !act.estado; // Revertir el estado local
+            const nuevoEstado = !act.estado;
+            try {
+                const res = await fetch(`/api/actuador/${actuadorKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: nuevoEstado })
                 });
-        };
-
-        // Asignar el listener a los botones de actuadores
-        document.getElementById("actuadoresContainer").addEventListener('click', (event) => {
-            const btn = event.target.closest('.btn-actuador');
-            if (btn) {
-                const actuadorKey = btn.getAttribute('data-actuador');
-                toggleActuador(actuadorKey);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                act.estado = nuevoEstado;
+                actualizarBoton(actuadorKey);
+            } catch (err) {
+                console.error(`Error actuador ${actuadorKey}:`, err);
+                alert(`Error comunicándose con el actuador ${actuadorKey}`);
             }
+        }
+
+        Object.values(actuadores).forEach(act => {
+            act.btn.addEventListener('click', () => toggleActuador(act.btn.getAttribute('data-actuador')));
         });
 
-
-        // ======= Reportes (funciones de manejo) =======
+        // ===== Reportes =====
         function obtenerBadgeEstado(estado) {
             const estadoStr = String(estado).toLowerCase();
             if (estadoStr === 'corregido' || estadoStr === 'solucionado') return '<span class="badge bg-success">✅ Corregido</span>';
             if (estadoStr === 'en_proceso') return '<span class="badge bg-warning text-dark">⏳ En Proceso</span>';
-            return '<span class="badge bg-danger">⚠️ Pendiente</span>'; // Por defecto, es pendiente
+            return '<span class="badge bg-danger">⚠️ Pendiente</span>';
         }
 
         async function cargarReportes() {
             try {
                 const res = await fetch('/api/reportes', { cache: 'no-store' });
-                if (!res.ok) {
-                    if (res.status === 403) throw new Error("403: Acceso denegado a reportes. Intenta reiniciar sesión.");
-                    throw new Error(`HTTP ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 reportes = await res.json();
                 renderPendientes();
                 renderHistorial();
             } catch (err) {
                 console.error("Error cargando reportes:", err);
-                const msg = `<tr><td colspan="8" class="text-danger">Error al cargar reportes: ${err.message}</td></tr>`;
+                const msg = `<tr><td colspan="8" class="text-danger">Error al cargar reportes</td></tr>`;
                 document.querySelector("#tablaPendientes tbody").innerHTML = msg;
                 document.querySelector("#tablaHistorial tbody").innerHTML = msg;
             }
@@ -329,16 +334,15 @@
 
         function renderPendientes() {
             const tbody = document.querySelector("#tablaPendientes tbody");
-            const pendientes = reportes.filter(r => String(r.estado).toLowerCase() === "pendiente" || String(r.estado).toLowerCase() === "en_proceso");
+            const pendientes = reportes.filter(r => ['pendiente', 'en_proceso'].includes(String(r.estado).toLowerCase()));
             tbody.innerHTML = "";
-            if (pendientes.length === 0) {
+            if (!pendientes.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No hay reportes pendientes</td></tr>';
                 return;
             }
-
             pendientes.forEach(r => {
                 tbody.innerHTML += `
-        <tr onclick="abrirCorregir(${r.id})" style="cursor: pointer;">
+        <tr onclick="abrirCorregir(${r.id})" style="cursor:pointer;">
           <td>${r.id}</td>
           <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
           <td>${r.usuario_emisor ?? ''}</td>
@@ -356,18 +360,16 @@
 
         function renderHistorial() {
             const tbody = document.querySelector("#tablaHistorial tbody");
-            const corregidos = reportes.filter(r => String(r.estado).toLowerCase() === "corregido" || String(r.estado).toLowerCase() === "solucionado");
-
+            const corregidos = reportes.filter(r => ['corregido', 'solucionado'].includes(String(r.estado).toLowerCase()));
             document.getElementById("infoContadorHist").textContent = `${corregidos.length} resultados`;
             tbody.innerHTML = "";
-            if (corregidos.length === 0) {
+            if (!corregidos.length) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Sin reportes corregidos</td></tr>';
                 return;
             }
-
             corregidos.forEach(r => {
                 tbody.innerHTML += `
-        <tr onclick="verReporte(${r.id})" style="cursor: pointer;">
+        <tr onclick="verReporte(${r.id})" style="cursor:pointer;">
           <td>${r.id}</td>
           <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
           <td>${r.usuario_emisor ?? ''}</td>
@@ -384,11 +386,9 @@
             });
         }
 
-        // ======= Modal (funciones) =======
         window.verReporte = function (id) {
             seleccionado = reportes.find(r => Number(r.id) === Number(id));
-            if (!seleccionado) return alert("Reporte no encontrado en memoria");
-
+            if (!seleccionado) return alert("Reporte no encontrado");
             modalTitulo.textContent = `Reporte de Falla #${seleccionado.id}`;
             chipId.textContent = `ID: ${seleccionado.id}`;
             chipFecha.textContent = `Creado: ${new Date(seleccionado.fecha_creacion).toLocaleString()}`;
@@ -397,59 +397,29 @@
             chipDispositivo.textContent = `Dispositivo: ${seleccionado.dispositivo ?? ''}`;
             detalleDescripcion.textContent = seleccionado.descripcion ?? "(Sin descripción)";
             detalleRespuesta.value = seleccionado.respuesta ?? "";
-
-            const isCorregido = String(seleccionado.estado).toLowerCase() === 'corregido' || String(seleccionado.estado).toLowerCase() === 'solucionado';
-
+            const isCorregido = ['corregido', 'solucionado'].includes(String(seleccionado.estado).toLowerCase());
             btnMarcarCorregido.disabled = isCorregido;
-            btnMarcarCorregido.textContent = isCorregido ? "✅ Reporte Corregido" : "Guardar respuesta y corregir";
-            detalleRespuesta.disabled = isCorregido;
-
-            // Mostrar el modal usando jQuery/Bootstrap
             $('#modalDetalle').modal('show');
-        };
+        }
 
-        window.abrirCorregir = function (id) {
-            verReporte(id);
-            // Enfocar el textarea si es un reporte pendiente
-            if (seleccionado && (String(seleccionado.estado).toLowerCase() === 'pendiente' || String(seleccionado.estado).toLowerCase() === 'en_proceso')) {
-                setTimeout(() => detalleRespuesta.focus(), 300);
-            }
-        };
+        window.abrirCorregir = verReporte;
 
-        // ======= Corregir (guardar respuesta + marcar) =======
-        btnMarcarCorregido.addEventListener("click", async () => {
+        btnMarcarCorregido.addEventListener('click', async () => {
             if (!seleccionado) return;
-            const respuesta = detalleRespuesta.value.trim();
-            if (!respuesta) { alert("Escribe una respuesta con el diagnóstico y la corrección realizada."); return; }
-
-            btnMarcarCorregido.disabled = true;
-            btnMarcarCorregido.textContent = "Guardando y Marcando...";
-
             try {
-                const res = await fetch(`/api/reportes/${seleccionado.id}/corregir`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ respuesta })
+                const res = await fetch(`/api/reporte/${seleccionado.id}/corregir`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ respuesta: detalleRespuesta.value })
                 });
-                if (!res.ok) {
-                    const txt = await res.text().catch(() => null);
-                    throw new Error(`HTTP ${res.status} ${txt || ''}`);
-                }
-
-                // Ocultar el modal y refrescar la tabla
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                alert("Reporte corregido con éxito");
                 $('#modalDetalle').modal('hide');
-                await cargarReportes();
-                alert("Reporte corregido y respuesta guardada");
-            } catch (err) {
-                console.error("Error al corregir:", err);
-                alert("No se pudo marcar como corregido. Revisa consola.");
-            } finally {
-                btnMarcarCorregido.disabled = false;
-                btnMarcarCorregido.textContent = "Guardar respuesta y corregir";
-            }
+                cargarReportes();
+            } catch (err) { console.error(err); alert("Error guardando corrección"); }
         });
 
-        // ======= LÓGICA DE INICIALIZACIÓN (Verificación de Sesión) =======
+        // ===== Inicialización =====
         function initDashboard() {
             fetch("/session")
                 .then(res => {
@@ -458,24 +428,22 @@
                 })
                 .then(sessionData => {
                     const userRol = (sessionData.rol || "").trim().toUpperCase();
-
                     if (userRol === "SERVICIO_TECNICO") {
                         cargarReportes();
-                        // Inicializar el estado de los actuadores si fuera necesario
+                        inicializarActuadores();
                     } else {
                         alert("Acceso denegado. Tu rol no es Servicio Técnico.");
                         window.location.href = "/login_rol.html";
                     }
                 })
                 .catch(error => {
-                    console.error("Error en verificación de sesión:", error);
+                    console.error("Error verificación sesión:", error);
                     alert("Acceso denegado o sesión expirada. Por favor, inicia sesión.");
                     window.location.href = "/login_rol.html";
                 });
         }
 
         document.addEventListener('DOMContentLoaded', initDashboard);
-
     </script>
 </body>
 

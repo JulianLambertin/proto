@@ -69,22 +69,28 @@ mqttClient.on("connect", () => {
   );
 });
 mqttClient.on("message", (topic, message) => {
-  try {
-    const payload = JSON.parse(message.toString());
-    if (topic === "esp32_peso" && typeof payload.peso === "number")
-      lastData.fuerza = payload.peso - (calibOffsets.fuerza || 0);
-    if (topic === "esp32_angulacion" && typeof payload.angX === "number")
-      lastData.angulo = payload.angX - (calibOffsets.angulo || 0);
-    if (topic === "esp32_emg" && typeof payload.emg === "number")
-      lastData.emg = payload.emg - (calibOffsets.emg || 0);
-    if (topic === "esp32_rele" && typeof payload.estado === "number")
-      releEstado = payload.estado;
-  } catch (e) {
-    console.error("❌ Error parseando MQTT message:", e.message);
+  const valor = parseFloat(message.toString());
+  if (isNaN(valor)) return;
+
+  switch (topic) {
+    case "esp32_peso":
+      lastData.fuerza = valor;
+      break;
+    case "esp32_angulacion":
+      lastData.angulo = valor;
+      break;
+    case "esp32_emg":
+      lastData.emg = valor;
+      break;
+    case "esp32_rele":
+      releEstado = valor;
+      break;
   }
+
   lastData.tiempo = new Date().toLocaleTimeString();
   io.emit("datos_mqtt", { ...lastData, rele: releEstado });
 });
+
 io.on("connection", (socket) => {
   console.log("🔌 Cliente socket conectado:", socket.id);
   socket.emit("datos_mqtt", { ...lastData, rele: releEstado });
@@ -563,6 +569,31 @@ app.put("/api/pacientes/:id", verifyToken(["PROFESIONAL"]), async (req, res) => 
     res.send("Paciente actualizado");
   });
 });
+// ------------------- API ACTUADORES -------------------
+app.post("/api/actuador/:nombre", verifyToken(["SERVICIO_TECNICO"]), (req, res) => {
+  const { nombre } = req.params;
+  const { estado } = req.body; // true = encender, false = apagar
+  let comando = null;
+
+  // Mapeo de actuadores a comandos numéricos
+  if (nombre === "relay") comando = estado ? 1 : 2;
+  else if (nombre === "buzzer") comando = estado ? 3 : 4;
+  else if (nombre === "motor") comando = estado ? 5 : 6;
+
+  if (comando === null)
+    return res.status(400).send("Actuador no reconocido");
+
+  try {
+    mqttClient.publish("esp32_rele", comando.toString());
+    console.log(`⚙️ Enviado comando MQTT ${comando} (${nombre} -> ${estado ? "ON" : "OFF"})`);
+    res.send("Comando enviado");
+  } catch (err) {
+    console.error("Error enviando comando MQTT:", err);
+    res.status(500).send("Error publicando comando MQTT");
+  }
+});
+
+
 
 // ------------------- INICIO DE SERVIDOR -------------------
 server.listen(PORT, () => {
