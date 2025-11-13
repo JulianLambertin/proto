@@ -357,7 +357,7 @@
         btnMarcarCorregido.addEventListener('click', async () => {
             if (!seleccionado) return;
             try {
-                await fetch(`/api/reporte/${seleccionado.id}/corregir`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ respuesta: detalleRespuesta.value }) });
+                await fetch(`/api/reportes/${seleccionado.id}/corregir`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ respuesta: detalleRespuesta.value }) });
                 alert("Reporte corregido con éxito");
                 $('#modalDetalle').modal('hide');
                 cargarReportes();

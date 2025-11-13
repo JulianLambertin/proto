@@ -13,16 +13,27 @@ const app = express();
 const server = http.createServer(app);
 const io = require("socket.io")(server);
 const PORT = 3001;
-// ------------------- MYSQL -------------------
-const db = mysql.createConnection({
+
+// ------------------- MYSQL (POOL DE CONEXIONES) -------------------
+// 🔥 CORRECCIÓN 1: Usamos Pool para evitar desconexiones por inactividad
+const db = mysql.createPool({
+  connectionLimit: 10, // Máximo de 10 conexiones simultáneas
   host: "localhost",
   user: "root",
-  password: "",
+  password: "", // Asegúrate de que esta sea tu contraseña real de MySQL
   database: "proyecto",
+  waitForConnections: true,
+  queueLimit: 0
 });
-db.connect((err) => {
-  if (err) console.error("❌ Error al conectar a MySQL:", err);
-  else console.log("✔️ Conectado a MySQL");
+
+db.getConnection((err, connection) => {
+  if (err) {
+    console.error("❌ Error CRÍTICO al conectar al Pool de MySQL:", err.code);
+    console.error("❌ Asegúrate de que tu servidor de base de datos (XAMPP/WAMP) esté corriendo.");
+  } else {
+    console.log("✔️ Conectado al Pool de MySQL");
+    connection.release(); // Liberar la conexión de prueba
+  }
 });
 // ------------------- SESIONES PERSISTENTES -------------------
 const sessionStore = new MySQLStore(
@@ -267,6 +278,7 @@ app.get("/api/reportes", verifyToken(["PROFESIONAL", "SERVICIO_TECNICO", "ADMIN"
 );
 
 // Crear un reporte (USANDO SOLO usuario_emisor)
+// 🔥 CORRECCIÓN 2: Usamos db.getConnection() para forzar una conexión fresca y evitar el fallo silencioso.
 app.post("/api/reportes", verifyToken(["PROFESIONAL"]), (req, res) => {
   const { tipo, dispositivo, descripcion } = req.body;
   const nombreUsuario = req.session.user.nombre;
@@ -275,21 +287,34 @@ app.post("/api/reportes", verifyToken(["PROFESIONAL"]), (req, res) => {
   if (!tipo || !dispositivo || !descripcion)
     return res.status(400).send("Faltan campos obligatorios");
 
-  // Solo usamos las columnas que existen
-  const sql = `INSERT INTO reportes (usuario_emisor, rol_emisor, tipo, dispositivo, descripcion, estado, fecha_creacion)
-                VALUES (?, ?, ?, ?, ?, 'Pendiente', NOW())`;
-
-  db.query(sql, [nombreUsuario, rolUsuario, tipo, dispositivo, descripcion], (err) => {
+  // 1. OBTENER UNA CONEXIÓN FRESCA DEL POOL
+  db.getConnection((err, connection) => {
     if (err) {
-      console.error("Error al crear el reporte:", err);
-      return res.status(500).send("Error al crear el reporte");
+      console.error("❌ Error al obtener conexión del Pool:", err);
+      return res.status(500).send("Error interno de conexión a DB.");
     }
-    res.json({ message: "Reporte creado correctamente" });
+
+    const sql = `INSERT INTO reportes (usuario_emisor, rol_emisor, tipo, dispositivo, descripcion, estado, fecha_creacion)
+                     VALUES (?, ?, ?, ?, ?, 'Pendiente', NOW())`;
+
+    // 2. EJECUTAR LA CONSULTA CON LA CONEXIÓN FRESCA
+    connection.query(sql, [nombreUsuario, rolUsuario, tipo, dispositivo, descripcion], (queryErr) => {
+      // 3. LIBERAR LA CONEXIÓN (¡CRÍTICO!)
+      connection.release();
+
+      if (queryErr) {
+        console.error("❌ Error al crear el reporte (Query):", queryErr);
+        return res.status(500).send("Error al crear el reporte");
+      }
+
+      res.json({ message: "Reporte creado correctamente" });
+    });
   });
 });
 
 // Corregir reporte (mantenemos la lógica original para Técnico)
-app.put("/api/reportes/:id/corregir", verifyToken(["SERVICIO_TECNICO"]), (req, res) => {
+// 🔥 CORRECCIÓN 3: Cambiado de app.put a app.post para solucionar el error 404
+app.post("/api/reportes/:id/corregir", verifyToken(["SERVICIO_TECNICO"]), (req, res) => {
   const id = Number(req.params.id);
   const { respuesta } = req.body;
   if (!respuesta || !respuesta.trim()) {
@@ -300,14 +325,14 @@ app.put("/api/reportes/:id/corregir", verifyToken(["SERVICIO_TECNICO"]), (req, r
   const tecnicoRol = req.session.user.rol;
 
   const sql = `
-        UPDATE reportes
-        SET estado = 'Corregido',
-            respuesta = ?,
-            usuario_receptor = ?,
-            rol_receptor = ?,
-            fecha_respuesta = NOW()
-        WHERE id = ?
-    `;
+            UPDATE reportes
+            SET estado = 'Corregido',
+                respuesta = ?,
+                usuario_receptor = ?,
+                rol_receptor = ?,
+                fecha_respuesta = NOW()
+            WHERE id = ?
+        `;
 
   db.query(sql, [respuesta.trim(), tecnicoNombre, tecnicoRol, id], (err, result) => {
     if (err) {
@@ -329,12 +354,12 @@ app.get("/api/mediciones/paciente/:id", verifyToken(["PROFESIONAL"]), (req, res)
 
   // 1. Búsqueda principal: Usa JOIN para asegurar que el paciente pertenezca al profesional
   const sqlMediciones = `
-        SELECT m.id_medicion, m.fuerza, m.angulacion, m.emg, m.fecha_medicion
-        FROM mediciones m
-        JOIN pacientes p ON m.id_paciente = p.id_paciente
-        WHERE m.id_paciente = ? AND p.profesional_id = ?
-        ORDER BY m.fecha_medicion DESC
-    `;
+            SELECT m.id_medicion, m.fuerza, m.angulacion, m.emg, m.fecha_medicion
+            FROM mediciones m
+            JOIN pacientes p ON m.id_paciente = p.id_paciente
+            WHERE m.id_paciente = ? AND p.profesional_id = ?
+            ORDER BY m.fecha_medicion DESC
+        `;
 
   db.query(sqlMediciones, [pacienteId, profesionalId], (err, results) => {
     if (err) {
@@ -377,11 +402,11 @@ app.get("/api/mediciones/mihistorial/:id", verifyToken(["PACIENTE"]), (req, res)
   }
 
   const sqlMediciones = `
-        SELECT id_medicion, fuerza, angulacion, emg, fecha_medicion
-        FROM mediciones
-        WHERE id_paciente = ?
-        ORDER BY fecha_medicion DESC
-    `;
+            SELECT id_medicion, fuerza, angulacion, emg, fecha_medicion
+            FROM mediciones
+            WHERE id_paciente = ?
+            ORDER BY fecha_medicion DESC
+        `;
 
   db.query(sqlMediciones, [pacienteId], (err, results) => {
     if (err) {
@@ -393,42 +418,51 @@ app.get("/api/mediciones/mihistorial/:id", verifyToken(["PACIENTE"]), (req, res)
 });
 
 // Registrar medición (Desde ESP32)
+// ✅ CORRECCIÓN 4: Adaptamos para recibir 'angulo' o 'angulacion' y evitar que el dato se pierda.
 app.post("/api/medicion", (req, res) => {
-  const { paciente_id, fuerza, angulacion, emg } = req.body;
+  // Desestructuramos ambos posibles nombres
+  const { paciente_id, fuerza, angulacion, angulo, emg } = req.body;
+  
+  // Usamos angulacion si existe, de lo contrario usamos angulo. 
+  // Esto cubre si el ESP32 envía 'angulo' en el payload de la API.
+  const angulacionFinal = angulacion !== undefined ? angulacion : angulo; 
 
-  if (!paciente_id || fuerza === undefined || angulacion === undefined || emg === undefined) {
-    return res.status(400).send("Faltan parámetros de medición");
-  }
+  if (!paciente_id || fuerza === undefined || angulacionFinal === undefined || emg === undefined) {
+    // Utilizamos angulacionFinal para la validación
+    return res.status(400).send("Faltan parámetros de medición");
+  }
 
-  const sql = `INSERT INTO mediciones (id_paciente, fuerza, angulacion, emg, fecha_medicion)
-                 VALUES (?, ?, ?, ?, NOW())`;
+  const sql = `INSERT INTO mediciones (id_paciente, fuerza, angulacion, emg, fecha_medicion)
+                    VALUES (?, ?, ?, ?, NOW())`;
 
-  db.query(sql, [paciente_id, fuerza, angulacion, emg], (err) => {
-    if (err) {
-      console.error("Error al registrar medición:", err);
-      return res.status(500).send("Error al guardar medición en DB");
-    }
-    res.send("Medición registrada");
-  });
+  // Insertamos el valor resuelto (angulacionFinal) en la DB.
+  db.query(sql, [paciente_id, fuerza, angulacionFinal, emg], (err) => {
+    if (err) {
+      console.error("Error al registrar medición:", err);
+      return res.status(500).send("Error al guardar medición en DB");
+    }
+    res.send("Medición registrada");
+  });
 });
 
 // API para Guardar Mediciones (desde health.html)
 app.post("/api/guardar-mediciones", verifyToken(["PACIENTE"]), async (req, res) => {
-  const pacienteId = req.session.user.id_usuario;
-  const mediciones = req.body.mediciones; // Array de objetos {fuerza, angulacion, emg}
+  const pacienteId = req.session.user.id_usuario;
+  const mediciones = req.body.mediciones; // Array de objetos {fuerza, angulacion, emg}
 
-  if (!mediciones || !Array.isArray(mediciones) || mediciones.length === 0) {
-    return res.status(400).json({ error: "No se proporcionaron mediciones válidas." });
-  }
+  if (!mediciones || !Array.isArray(mediciones) || mediciones.length === 0) {
+    return res.status(400).json({ error: "No se proporcionaron mediciones válidas." });
+  }
 
   // Preparar valores para inserción múltiple
   const values = mediciones.map(m => [
-    pacienteId,
-    m.fuerza,
-    m.angulacion,
-    m.emg,
-    new Date().toISOString().slice(0, 19).replace('T', ' ') // Usar la hora de recepción
-  ]);
+    pacienteId,
+    m.fuerza,
+    // ✅ CORRECCIÓN 5: Usamos m.angulacion o m.angulo como fallback
+    m.angulacion !== undefined ? m.angulacion : m.angulo, 
+    m.emg,
+    new Date().toISOString().slice(0, 19).replace('T', ' ') // Usar la hora de recepción
+  ]);
 
   const sql = `INSERT INTO mediciones (id_paciente, fuerza, angulacion, emg, fecha_medicion) VALUES ?`;
 
