@@ -102,11 +102,11 @@
                 <button id="btnRelay" class="btn btn-warning btn-actuador" data-actuador="relay">
                     <i class="fa fa-plug me-2"></i> Relé: OFF
                 </button>
-                <button id="btnMotor1" class="btn btn-warning btn-actuador" data-actuador="motor1">
-                    <i class="fa fa-cogs me-2"></i> Motor 1: OFF
+                <button id="btnBuzzer" class="btn btn-warning btn-actuador" data-actuador="motor1">
+                    <i class="fa fa-cogs me-2"></i> Buzzer: OFF
                 </button>
-                <button id="btnMotor2" class="btn btn-warning btn-actuador" data-actuador="motor2">
-                    <i class="fa fa-cogs me-2"></i> Motor 2: OFF
+                <button id="btnMotor" class="btn btn-warning btn-actuador" data-actuador="motor2">
+                    <i class="fa fa-cogs me-2"></i> Motor: OFF
                 </button>
             </div>
 
@@ -224,8 +224,8 @@
 
         const actuadores = {
             'relay': { estado: false, btn: document.getElementById("btnRelay") },
-            'motor1': { estado: false, btn: document.getElementById("btnMotor1") },
-            'motor2': { estado: false, btn: document.getElementById("btnMotor2") }
+            'motor1': { estado: false, btn: document.getElementById("btnBuzzer") },
+            'motor2': { estado: false, btn: document.getElementById("btnMotor") }
         };
 
         const buffer = [];
