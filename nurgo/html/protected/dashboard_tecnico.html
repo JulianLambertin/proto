@@ -80,9 +80,9 @@
 
     <div class="container">
 
+        <!-- Sensor y Actuadores -->
         <div class="card bg-white">
             <h4 class="mb-4 text-primary fw-bold"><i class="fa fa-tachometer me-2"></i> Val. Tiempo Real y Control</h4>
-
             <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center mb-4">
                 <div><span class="text-muted">Fuerza:</span> <span id="fuerzaValor" class="sensor-value text-success">--
                         N</span></div>
@@ -91,26 +91,20 @@
                 <div><span class="text-muted">EMG:</span> <span id="emgValor" class="sensor-value text-danger">--
                         mV</span></div>
             </div>
-
             <hr class="my-4">
-
             <h5 class="text-secondary fw-bold mb-3"><i class="fa fa-wrench me-2"></i> Control de Actuadores</h5>
             <div id="actuadoresContainer" class="d-flex flex-wrap">
-                <button id="btnRelay" class="btn btn-warning btn-actuador" data-actuador="relay">
-                    <i class="fa fa-plug me-2"></i> Relé: OFF
-                </button>
-                <button id="btnBuzzer" class="btn btn-warning btn-actuador" data-actuador="buzzer">
-                    <i class="fa fa-bullhorn me-2"></i> Buzzer: OFF
-                </button>
-                <button id="btnMotor" class="btn btn-warning btn-actuador" data-actuador="motor">
-                    <i class="fa fa-cogs me-2"></i> Motor: OFF
-                </button>
+                <button id="btnRelay" class="btn btn-warning btn-actuador" data-actuador="relay"><i
+                        class="fa fa-plug me-2"></i> Relé: OFF</button>
+                <button id="btnBuzzer" class="btn btn-warning btn-actuador" data-actuador="buzzer"><i
+                        class="fa fa-bullhorn me-2"></i> Buzzer: OFF</button>
+                <button id="btnMotor" class="btn btn-warning btn-actuador" data-actuador="motor"><i
+                        class="fa fa-cogs me-2"></i> Motor: OFF</button>
             </div>
-
         </div>
 
+        <!-- Reportes Pendientes -->
         <hr class="my-4">
-
         <div class="card bg-white">
             <h4 class="mb-3 text-danger fw-bold"><i class="fa fa-warning me-2"></i> Reportes pendientes de Corrección
             </h4>
@@ -132,6 +126,7 @@
             </div>
         </div>
 
+        <!-- Historial rápido -->
         <div class="card bg-white">
             <h4 class="mb-3 text-success fw-bold"><i class="fa fa-clock-o me-2"></i> Historial Rápido (últimos 10 datos)
             </h4>
@@ -150,8 +145,8 @@
             </div>
         </div>
 
+        <!-- Historial de reportes corregidos -->
         <hr class="my-4">
-
         <div class="card bg-white">
             <h4 class="mb-3 text-info fw-bold"><i class="fa fa-history me-2"></i> Historial de Reportes Corregidos</h4>
             <div class="table-responsive">
@@ -176,6 +171,7 @@
 
     </div>
 
+    <!-- Modal detalle reporte -->
     <div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
@@ -204,15 +200,15 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button id="btnMarcarCorregido" class="btn btn-success fw-bold">
-                        <i class="fa fa-check-square-o me-2"></i> Guardar respuesta y corregir
-                    </button>
+                    <button id="btnMarcarCorregido" class="btn btn-success fw-bold"><i
+                            class="fa fa-check-square-o me-2"></i> Guardar respuesta y corregir</button>
                     <button class="btn btn-secondary" onclick="$('#modalDetalle').modal('hide')">Cerrar</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- SCRIPT -->
     <script>
         const socket = io();
         const fuerzaSpan = document.getElementById("fuerzaValor");
@@ -226,11 +222,10 @@
             'motor': { estado: false, btn: document.getElementById("btnMotor") }
         };
 
-        const buffer = [];
+        let buffer = [];
         let reportes = [];
         let seleccionado = null;
 
-        // Modal referencias
         const modalTitulo = document.getElementById("modalTitulo");
         const chipId = document.getElementById("chipId");
         const chipFecha = document.getElementById("chipFecha");
@@ -241,40 +236,23 @@
         const detalleRespuesta = document.getElementById("detalleRespuesta");
         const btnMarcarCorregido = document.getElementById("btnMarcarCorregido");
 
-        // ===== Socket MQTT =====
+        // ===== WebSocket datos MQTT =====
         socket.on("datos_mqtt", data => {
-            try {
-                const ahora = new Date().toLocaleTimeString();
-                fuerzaSpan.textContent = (data.fuerza ?? 0).toFixed(2) + " N";
-                anguloSpan.textContent = (data.angulo ?? 0).toFixed(2) + " °";
-                emgSpan.textContent = (data.emg ?? 0).toFixed(2) + " mV";
+            const ahora = new Date().toLocaleTimeString();
+            fuerzaSpan.textContent = (data.fuerza ?? 0).toFixed(2) + " N";
+            anguloSpan.textContent = (data.angulo ?? 0).toFixed(2) + " °";
+            emgSpan.textContent = (data.emg ?? 0).toFixed(2) + " mV";
 
-                buffer.push({ tiempo: ahora, fuerza: data.fuerza ?? 0, angulo: data.angulo ?? 0, emg: data.emg ?? 0 });
-                if (buffer.length > 10) buffer.shift();
+            buffer.push({ tiempo: ahora, fuerza: data.fuerza ?? 0, angulo: data.angulo ?? 0, emg: data.emg ?? 0 });
+            if (buffer.length > 10) buffer.shift();
 
-                historialBody.innerHTML = "";
-                buffer.slice().reverse().forEach(m => {
-                    historialBody.innerHTML += `<tr><td>${m.tiempo}</td><td>${m.fuerza.toFixed(2)}</td><td>${m.angulo.toFixed(2)}</td><td>${m.emg.toFixed(2)}</td></tr>`;
-                });
-            } catch (e) {
-                console.error("Error procesando datos MQTT:", e);
-            }
+            historialBody.innerHTML = "";
+            buffer.slice().reverse().forEach(m => {
+                historialBody.innerHTML += `<tr><td>${m.tiempo}</td><td>${m.fuerza.toFixed(2)}</td><td>${m.angulo.toFixed(2)}</td><td>${m.emg.toFixed(2)}</td></tr>`;
+            });
         });
 
         // ===== Actuadores =====
-        async function inicializarActuadores() {
-            try {
-                const res = await fetch('/api/actuadores', { cache: 'no-store' });
-                const estados = await res.json();
-                for (const key in actuadores) {
-                    if (estados[key] !== undefined) {
-                        actuadores[key].estado = estados[key];
-                        actualizarBoton(key);
-                    }
-                }
-            } catch (e) { console.error("Error inicializando actuadores:", e); }
-        }
-
         function actualizarBoton(actuadorKey) {
             const act = actuadores[actuadorKey];
             const estadoTexto = act.estado ? 'ON' : 'OFF';
@@ -291,18 +269,13 @@
             if (!act) return;
             const nuevoEstado = !act.estado;
             try {
-                const res = await fetch(`/api/actuador/${actuadorKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ estado: nuevoEstado })
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                await fetch(`/api/actuador/${actuadorKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: nuevoEstado }) });
                 act.estado = nuevoEstado;
-                actualizarBoton(actuadorKey);
             } catch (err) {
-                console.error(`Error actuador ${actuadorKey}:`, err);
-                alert(`Error comunicándose con el actuador ${actuadorKey}`);
+                console.warn(`No se pudo actualizar ${actuadorKey} en backend, se mostrará solo visualmente.`);
+                act.estado = nuevoEstado;
             }
+            actualizarBoton(actuadorKey);
         }
 
         Object.values(actuadores).forEach(act => {
@@ -319,42 +292,29 @@
 
         async function cargarReportes() {
             try {
-                const res = await fetch('/api/reportes', { cache: 'no-store' });
+                const res = await fetch('/api/reportes');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 reportes = await res.json();
                 renderPendientes();
                 renderHistorial();
-            } catch (err) {
-                console.error("Error cargando reportes:", err);
-                const msg = `<tr><td colspan="8" class="text-danger">Error al cargar reportes</td></tr>`;
-                document.querySelector("#tablaPendientes tbody").innerHTML = msg;
-                document.querySelector("#tablaHistorial tbody").innerHTML = msg;
-            }
+            } catch (err) { console.error(err); }
         }
 
         function renderPendientes() {
             const tbody = document.querySelector("#tablaPendientes tbody");
             const pendientes = reportes.filter(r => ['pendiente', 'en_proceso'].includes(String(r.estado).toLowerCase()));
             tbody.innerHTML = "";
-            if (!pendientes.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No hay reportes pendientes</td></tr>';
-                return;
-            }
+            if (!pendientes.length) { tbody.innerHTML = '<tr><td colspan="7">No hay reportes pendientes</td></tr>'; return; }
             pendientes.forEach(r => {
-                tbody.innerHTML += `
-        <tr onclick="abrirCorregir(${r.id})" style="cursor:pointer;">
-          <td>${r.id}</td>
-          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-          <td>${r.usuario_emisor ?? ''}</td>
-          <td>${r.tipo ?? ''}</td>
-          <td>${r.dispositivo ?? ''}</td>
-          <td>${obtenerBadgeEstado(r.estado)}</td>
-          <td>
-            <button class="btn btn-sm btn-info fw-semibold" onclick="event.stopPropagation(); abrirCorregir(${r.id})">
-                <i class="fa fa-pencil me-1"></i> Responder
-            </button>
-          </td>
-        </tr>`;
+                tbody.innerHTML += `<tr onclick="abrirCorregir(${r.id})" style="cursor:pointer;">
+                    <td>${r.id}</td>
+                    <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+                    <td>${r.usuario_emisor ?? ''}</td>
+                    <td>${r.tipo ?? ''}</td>
+                    <td>${r.dispositivo ?? ''}</td>
+                    <td>${obtenerBadgeEstado(r.estado)}</td>
+                    <td><button class="btn btn-sm btn-info" onclick="event.stopPropagation(); abrirCorregir(${r.id})">Responder</button></td>
+                </tr>`;
             });
         }
 
@@ -363,26 +323,17 @@
             const corregidos = reportes.filter(r => ['corregido', 'solucionado'].includes(String(r.estado).toLowerCase()));
             document.getElementById("infoContadorHist").textContent = `${corregidos.length} resultados`;
             tbody.innerHTML = "";
-            if (!corregidos.length) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Sin reportes corregidos</td></tr>';
-                return;
-            }
             corregidos.forEach(r => {
-                tbody.innerHTML += `
-        <tr onclick="verReporte(${r.id})" style="cursor:pointer;">
-          <td>${r.id}</td>
-          <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
-          <td>${r.usuario_emisor ?? ''}</td>
-          <td>${r.rol_emisor ?? ''}</td>
-          <td>${r.tipo ?? ''}</td>
-          <td>${r.dispositivo ?? ''}</td>
-          <td>${obtenerBadgeEstado(r.estado)}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); verReporte(${r.id})">
-                <i class="fa fa-eye"></i> Ver
-            </button>
-          </td>
-        </tr>`;
+                tbody.innerHTML += `<tr onclick="verReporte(${r.id})" style="cursor:pointer;">
+                    <td>${r.id}</td>
+                    <td>${new Date(r.fecha_creacion).toLocaleString()}</td>
+                    <td>${r.usuario_emisor ?? ''}</td>
+                    <td>${r.rol_emisor ?? ''}</td>
+                    <td>${r.tipo ?? ''}</td>
+                    <td>${r.dispositivo ?? ''}</td>
+                    <td>${obtenerBadgeEstado(r.estado)}</td>
+                    <td><button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); verReporte(${r.id})">Ver</button></td>
+                </tr>`;
             });
         }
 
@@ -397,8 +348,7 @@
             chipDispositivo.textContent = `Dispositivo: ${seleccionado.dispositivo ?? ''}`;
             detalleDescripcion.textContent = seleccionado.descripcion ?? "(Sin descripción)";
             detalleRespuesta.value = seleccionado.respuesta ?? "";
-            const isCorregido = ['corregido', 'solucionado'].includes(String(seleccionado.estado).toLowerCase());
-            btnMarcarCorregido.disabled = isCorregido;
+            btnMarcarCorregido.disabled = ['corregido', 'solucionado'].includes(String(seleccionado.estado).toLowerCase());
             $('#modalDetalle').modal('show');
         }
 
@@ -407,12 +357,7 @@
         btnMarcarCorregido.addEventListener('click', async () => {
             if (!seleccionado) return;
             try {
-                const res = await fetch(`/api/reporte/${seleccionado.id}/corregir`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ respuesta: detalleRespuesta.value })
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                await fetch(`/api/reporte/${seleccionado.id}/corregir`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ respuesta: detalleRespuesta.value }) });
                 alert("Reporte corregido con éxito");
                 $('#modalDetalle').modal('hide');
                 cargarReportes();
@@ -421,26 +366,22 @@
 
         // ===== Inicialización =====
         function initDashboard() {
-            fetch("/session")
-                .then(res => {
-                    if (!res.ok) throw new Error("Sesión inválida");
-                    return res.json();
-                })
-                .then(sessionData => {
-                    const userRol = (sessionData.rol || "").trim().toUpperCase();
-                    if (userRol === "SERVICIO_TECNICO") {
-                        cargarReportes();
-                        inicializarActuadores();
-                    } else {
-                        alert("Acceso denegado. Tu rol no es Servicio Técnico.");
-                        window.location.href = "/login_rol.html";
-                    }
-                })
-                .catch(error => {
-                    console.error("Error verificación sesión:", error);
-                    alert("Acceso denegado o sesión expirada. Por favor, inicia sesión.");
+            fetch("/session").then(res => {
+                if (!res.ok) throw new Error("Sesión inválida");
+                return res.json();
+            }).then(sessionData => {
+                const userRol = (sessionData.rol || "").trim().toUpperCase();
+                if (userRol === "SERVICIO_TECNICO") {
+                    cargarReportes();
+                } else {
+                    alert("Acceso denegado. Tu rol no es Servicio Técnico.");
                     window.location.href = "/login_rol.html";
-                });
+                }
+            }).catch(err => {
+                console.error(err);
+                alert("Sesión inválida o expirada");
+                window.location.href = "/login_rol.html";
+            });
         }
 
         document.addEventListener('DOMContentLoaded', initDashboard);
